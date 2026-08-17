@@ -348,3 +348,28 @@ Perform end-to-end integration verification testing: background tracking, offlin
 - [ ] All unit, widget, and integration tests pass 100%.
 - [ ] `flutter analyze` reports zero errors and zero warnings.
 - [ ] Complete offline-first workflow verified.
+
+---
+
+### TASK-016: Configure Native Background Location Permissions & Manifests
+
+**Objective**
+Configure native Android (`AndroidManifest.xml`) and iOS (`Info.plist`) permissions and foreground service declarations required for background location tracking and OS compliance.
+
+**Changes**
+- `android/app/src/main/AndroidManifest.xml`
+- `ios/Runner/Info.plist`
+
+**Implementation Notes**
+- Declare Android permissions: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`.
+- Declare `GeolocatorLocationService` with `android:foregroundServiceType="location"` for Android 14+ (API 34+) compliance.
+- Declare iOS `UIBackgroundModes` containing `location` and location usage description keys (`NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`).
+
+**Tests**
+- Validate XML and Plist structure via `flutter analyze`.
+
+**Acceptance Criteria**
+- [ ] `AndroidManifest.xml` contains location and foreground service permissions and service entry.
+- [ ] `Info.plist` contains `location` background mode and location usage keys.
+- [ ] `flutter analyze` reports zero errors.
+

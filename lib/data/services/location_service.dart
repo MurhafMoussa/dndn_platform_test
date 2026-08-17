@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
@@ -12,12 +13,41 @@ class LocationService {
   final GeolocatorPlatform _geolocator;
   final Uuid _uuid;
 
-  /// Default location settings with 2-second interval and 1-meter displacement filter.
-  static const LocationSettings defaultLocationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 1,
-    timeLimit: Duration(seconds: 2),
-  );
+  /// Default location settings with 2-second interval, 1-meter displacement filter, and native background notification configs.
+  static LocationSettings get defaultLocationSettings {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 1,
+        intervalDuration: const Duration(seconds: 2),
+        timeLimit: const Duration(seconds: 2),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Background Location Tracking',
+          notificationText: 'Location tracking is active in background.',
+          notificationIcon: AndroidResource(name: 'ic_launcher'),
+          enableWakeLock: true,
+        ),
+      );
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.fitness,
+        distanceFilter: 1,
+        timeLimit: const Duration(seconds: 2),
+        pauseLocationUpdatesAutomatically: false,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+      );
+    }
+
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 1,
+      timeLimit: Duration(seconds: 2),
+    );
+  }
 
   LocationService({
     GeolocatorPlatform? geolocator,
@@ -68,15 +98,16 @@ class LocationService {
 
   /// Gets single current location fix.
   Future<Either<TrackingFailure, LocationPoint>> getCurrentLocation({
-    LocationSettings locationSettings = defaultLocationSettings,
+    LocationSettings? locationSettings,
   }) async {
+    final settings = locationSettings ?? defaultLocationSettings;
     final permissionCheck = await checkAndRequestPermission();
     return permissionCheck.fold(
       Left.new,
       (_) async {
         try {
           final position = await _geolocator.getCurrentPosition(
-            locationSettings: locationSettings,
+            locationSettings: settings,
           );
           final point = LocationPoint(
             id: _uuid.v4(),
@@ -99,8 +130,9 @@ class LocationService {
 
   /// Exposes stream of periodic GPS position updates mapped to [LocationPoint].
   Stream<Either<TrackingFailure, LocationPoint>> getLocationStream({
-    LocationSettings locationSettings = defaultLocationSettings,
+    LocationSettings? locationSettings,
   }) async* {
+    final settings = locationSettings ?? defaultLocationSettings;
     final permissionCheck = await checkAndRequestPermission();
     if (permissionCheck.isLeft()) {
       final failure = permissionCheck.getLeft().toNullable() ?? const LocationServiceDisabledFailure();
@@ -110,7 +142,7 @@ class LocationService {
 
     try {
       await for (final position in _geolocator.getPositionStream(
-        locationSettings: locationSettings,
+        locationSettings: settings,
       )) {
         yield Right(
           LocationPoint(

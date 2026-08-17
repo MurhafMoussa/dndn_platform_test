@@ -68,7 +68,20 @@ For features requiring offline behavior, verify:
 - retry behavior is deterministic
 - UI state can be restored from local data
 
-## Step 6 — Test Coverage
+## Step 6 — Flutter UI Verification
+
+For UI changes, verify:
+
+- no RenderFlex overflow
+- responsive behavior for relevant screen sizes
+- loading/empty/error states
+- accessibility semantics where appropriate
+- existing design-system components are reused
+- no unnecessary hardcoded visual values
+- no obvious unnecessary widget rebuilds
+- controllers/listeners/animations are correctly disposed
+
+## Step 7 — Test Coverage
 
 Check whether the changed behavior has appropriate:
 

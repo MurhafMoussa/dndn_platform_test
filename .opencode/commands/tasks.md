@@ -68,9 +68,10 @@ Prefer:
 4. Repository
 5. Business/data behavior
 6. ViewModel
-7. UI
-8. Integration
-9. E2E
+7. UI / Presentation
+8. UI integration
+9. Integration
+10. E2E
 
 Do not create tasks for unrelated refactoring.
 

@@ -62,8 +62,27 @@ Check:
 - unnecessary rebuilds
 - state ownership
 - platform-specific concerns
+### 5. UI / UX
 
-### 5. Testing
+Check:
+
+- consistency with existing design system
+- reuse of existing widgets/components
+- loading states
+- empty states
+- error states
+- disabled states
+- responsive layouts
+- accessibility
+- semantic widgets where appropriate
+- keyboard behavior
+- text overflow
+- layout overflow
+- platform-specific behavior
+- unnecessary hardcoded visual values
+- inappropriate widget composition
+
+### 6. Testing
 
 Check whether tests verify behavior rather than implementation details.
 
@@ -75,7 +94,7 @@ Look for:
 - tests that provide little value
 - missing integration coverage
 
-### 6. Maintainability
+### 7. Maintainability
 
 Check:
 
@@ -87,7 +106,7 @@ Check:
 - overly large classes/functions
 - unclear responsibilities
 
-### 7. Scope
+### 8. Scope
 
 Check for:
 
@@ -96,6 +115,23 @@ Check for:
 - unnecessary files
 - changes outside the requested feature
 
+### 9. Dart
+
+Check:
+
+- null-safety
+- unnecessary nullable values
+- async/await correctness
+- Future/Stream handling
+- error propagation
+- unnecessary mutable state
+- unnecessary allocations
+- naming
+- API clarity
+- unnecessary complexity
+- unsafe casts
+- ignored Futures
+- resource lifecycle
 ## Severity
 
 Classify findings as:

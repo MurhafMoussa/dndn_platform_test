@@ -108,9 +108,11 @@ All domain failures inherit from abstract `TrackingFailure` (`package:equatable`
 abstract class TrackingRepository {
   Stream<Either<TrackingFailure, List<LocationPoint>>> watchLocationPoints();
   Stream<Either<TrackingFailure, List<IncidentReport>>> watchIncidents();
+  Stream<Either<TrackingFailure, List<SyncOutboxItem>>> watchPendingOutbox();
   Future<Either<TrackingFailure, Unit>> addLocationPoint(LocationPoint point);
   Future<Either<TrackingFailure, Unit>> addIncidentReport(IncidentReport incident);
-  TaskEither<TrackingFailure, double> calculateTotalDistanceMeters();
+  TaskEither<TrackingFailure, double> getTotalDistanceMeters();
+  Future<Either<TrackingFailure, Unit>> flushOutbox();
 }
 ```
 

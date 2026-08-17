@@ -1,5 +1,3 @@
-
-
 ## Architecture Overview
 This application strictly follows **MVVM (Model-View-ViewModel)** with an **Offline-First Outbox Pattern**.
 
@@ -9,10 +7,10 @@ This application strictly follows **MVVM (Model-View-ViewModel)** with an **Offl
 ┌─────────────────────────────────────────────────────────────────┐
 │                       PRESENTATION LAYER                        │
 │  ┌─────────────────────────────┐   ┌─────────────────────────┐  │
-│  │ View (MapScreen/AdminView)  │ <─>│ ViewModel / Cubit       │  │
+│  │ View (MapView/AdminView)    │ <─>│ Cubits / ViewModels     │  │
 │  └─────────────────────────────┘   └─────────────────────────┘  │
 └─────────────────────────────────────────┬───────────────────────┘
-│ Calls
+                                          │ Calls
 ┌─────────────────────────────────────────▼───────────────────────┐
 │                           DATA LAYER                            │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -53,7 +51,7 @@ This application strictly follows **MVVM (Model-View-ViewModel)** with an **Offl
 * **ViewModels / Cubits:** Manage UI state, process view interactions, call repository methods, and map repository results into presentation states.
   * *Constraint:* NO imports of `package:flutter/widgets.dart`, `package:drift/`, or HTTP clients (`Dio`).
 * **TrackingRepository:** Coordinates local database storage (`TrackingDatabase`) and background sync triggers. Exposes clean Dart streams and models to ViewModels.
-  * *Constraint:* Hides database generated classes and network implementation details behind clean Dart interface contracts.
+  * *Constraint:* Hides database generated classes and network implementation details behind clean Dart interface contracts using `fpdart` (`Either`, `TaskEither`).
 * **Background Location Service:** Operates independently of presentation lifecycle. Captures GPS points and writes directly to `TrackingRepository`.
   * *Constraint:* NO references to UI components, BuildContext, or ViewModels.
 
@@ -83,8 +81,69 @@ CREATE TABLE incidents (
 CREATE TABLE sync_outbox (
     id TEXT PRIMARY KEY NOT NULL,
     event_type TEXT NOT NULL,
-    payload TEXT NOT NULL,
+    payload TEXT NOT NULL, -- JSON formatted string
     created_at INTEGER NOT NULL,
     status TEXT NOT NULL -- 'pending', 'syncing', 'failed'
 );
+```
 
+---
+
+## Domain Failure Hierarchy
+
+All domain failures inherit from abstract `TrackingFailure` (`package:equatable`):
+
+- `LocationPermissionDeniedFailure`: Location permission was denied by the user or OS.
+- `LocationServiceDisabledFailure`: GPS / location service is disabled on the device.
+- `DatabaseFailure`: SQLite / Drift operational error.
+- `SyncFailure`: Outbox transmission failure or network dispatch timeout.
+- `UnauthorizedAccessFailure`: Non-admin access attempt on guarded route.
+- `DistanceCalculationFailure`: Error processing GPS coordinates for total distance.
+
+---
+
+## Repository Interface Contract
+
+```dart
+abstract class TrackingRepository {
+  Stream<Either<TrackingFailure, List<LocationPoint>>> watchLocationPoints();
+  Stream<Either<TrackingFailure, List<IncidentReport>>> watchIncidents();
+  Future<Either<TrackingFailure, Unit>> addLocationPoint(LocationPoint point);
+  Future<Either<TrackingFailure, Unit>> addIncidentReport(IncidentReport incident);
+  TaskEither<TrackingFailure, double> calculateTotalDistanceMeters();
+}
+```
+
+---
+
+## Outbox Payload Schemas
+
+### `location_point_created`
+```json
+{
+  "id": "uuid-v4",
+  "latitude": 37.7749,
+  "longitude": -122.4194,
+  "timestamp": 1700000000000
+}
+```
+
+### `incident_reported`
+```json
+{
+  "id": "uuid-v4",
+  "type": "Police",
+  "latitude": 37.7749,
+  "longitude": -122.4194,
+  "timestamp": 1700000000000
+}
+```
+
+---
+
+## State Management Cubits
+
+- `UserRoleCubit`: Controls active role state (`UserRole.user` vs `UserRole.admin`), persisting role selection across restarts via `HydratedCubit`.
+- `MapCubit`: Manages location streaming, route polyline coordinates, and map loading/failure states.
+- `IncidentCubit`: Manages incident report modal dialog state and submission handling.
+- `AdminCubit`: Manages telemetry state (distance in meters, point counts, incident logs) and enforces role guarding for non-admin users.

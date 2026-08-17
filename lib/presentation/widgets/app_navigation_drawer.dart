@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../core/constants/app_strings.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../domain/models/user_role.dart';
 import '../cubits/user_role_cubit.dart';
 
@@ -24,9 +28,7 @@ class AppNavigationDrawer extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-            ),
+            decoration: BoxDecoration(color: colorScheme.primaryContainer),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -36,20 +38,20 @@ class AppNavigationDrawer extends StatelessWidget {
                   size: 36,
                   color: colorScheme.onPrimaryContainer,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Location & Telemetry',
+                  AppStrings.navHeaderTitle,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 BlocBuilder<UserRoleCubit, UserRole>(
                   builder: (context, activeRole) {
-                    final roleLabel = activeRole == UserRole.admin ? 'Admin Session' : 'User Session';
+                    final label = activeRole == UserRole.admin ? AppStrings.adminSession : AppStrings.userSession;
                     return Text(
-                      roleLabel,
+                      label,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
                       ),
@@ -64,14 +66,14 @@ class AppNavigationDrawer extends StatelessWidget {
             button: true,
             child: ListTile(
               minLeadingWidth: 24,
-              minVerticalPadding: 12,
+              minVerticalPadding: AppSpacing.md,
               leading: const Icon(Icons.map_rounded),
-              title: const Text('Map & Tracking'),
-              selected: currentRoute == '/' || currentRoute.isEmpty,
+              title: const Text(AppStrings.navMapLabel),
+              selected: currentRoute == AppConstants.mapRoute || currentRoute.isEmpty,
               onTap: () {
                 Navigator.of(context).pop();
-                if (currentRoute != '/') {
-                  Navigator.of(context).pushReplacementNamed('/');
+                if (currentRoute != AppConstants.mapRoute) {
+                  context.go(AppConstants.mapRoute);
                 }
               },
             ),
@@ -81,26 +83,24 @@ class AppNavigationDrawer extends StatelessWidget {
             button: true,
             child: ListTile(
               minLeadingWidth: 24,
-              minVerticalPadding: 12,
+              minVerticalPadding: AppSpacing.md,
               leading: const Icon(Icons.dashboard_rounded),
-              title: const Text('Admin Dashboard'),
-              selected: currentRoute == '/admin',
+              title: const Text(AppStrings.navAdminLabel),
+              selected: currentRoute == AppConstants.adminRoute,
               onTap: () {
                 Navigator.of(context).pop();
-                if (currentRoute != '/admin') {
-                  Navigator.of(context).pushReplacementNamed('/admin');
+                if (currentRoute != AppConstants.adminRoute) {
+                  context.go(AppConstants.adminRoute);
                 }
               },
             ),
           ),
           const Divider(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
             child: Text(
               'ACCESS CONTROL',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
+              style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline),
             ),
           ),
           BlocBuilder<UserRoleCubit, UserRole>(
@@ -114,13 +114,9 @@ class AppNavigationDrawer extends StatelessWidget {
                     isAdmin ? Icons.admin_panel_settings_rounded : Icons.person_rounded,
                   ),
                   title: const Text('Administrator Mode'),
-                  subtitle: Text(
-                    isAdmin ? 'Admin features unlocked' : 'Standard user mode',
-                  ),
+                  subtitle: Text(isAdmin ? 'Admin features unlocked' : 'Standard user mode'),
                   value: isAdmin,
-                  onChanged: (_) {
-                    context.read<UserRoleCubit>().toggleRole();
-                  },
+                  onChanged: (_) => context.read<UserRoleCubit>().toggleRole(),
                 ),
               );
             },

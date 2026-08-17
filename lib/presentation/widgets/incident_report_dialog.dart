@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_strings.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../domain/models/incident_report.dart';
 
 /// Modal choices dialog for reporting hazard incidents (Police, Accident, Traffic Heavy).
@@ -14,15 +17,12 @@ class IncidentReportDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return AlertDialog(
       title: const Row(
         children: [
           Icon(Icons.report_problem_rounded),
-          SizedBox(width: 8),
-          Text('Report Incident'),
+          SizedBox(width: AppSpacing.sm),
+          Text(AppStrings.reportIncidentTitle),
         ],
       ),
       content: Column(
@@ -31,35 +31,35 @@ class IncidentReportDialog extends StatelessWidget {
           _buildOptionTile(
             context,
             type: IncidentType.police,
-            title: 'Police',
-            subtitle: 'Speed check or police presence',
+            title: AppStrings.policeTitle,
+            subtitle: AppStrings.policeSubtitle,
             icon: Icons.local_police_rounded,
-            iconColor: colorScheme.primary,
+            iconColor: AppColors.policeColor,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildOptionTile(
             context,
             type: IncidentType.accident,
-            title: 'Accident',
-            subtitle: 'Vehicle collision or road hazard',
+            title: AppStrings.accidentTitle,
+            subtitle: AppStrings.accidentSubtitle,
             icon: Icons.car_crash_rounded,
-            iconColor: colorScheme.error,
+            iconColor: AppColors.accidentColor,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _buildOptionTile(
             context,
             type: IncidentType.trafficHeavy,
-            title: 'Traffic Heavy',
-            subtitle: 'Severe traffic congestion or delay',
+            title: AppStrings.trafficHeavyTitle,
+            subtitle: AppStrings.trafficHeavySubtitle,
             icon: Icons.traffic_rounded,
-            iconColor: Colors.orange,
+            iconColor: AppColors.trafficColor,
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
       ],
     );
@@ -78,15 +78,18 @@ class IncidentReportDialog extends StatelessWidget {
       button: true,
       child: Material(
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.borderMd,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.borderMd,
           onTap: () {
             Navigator.of(context).pop();
             onSelectIncident(type);
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
             child: Row(
               children: [
                 Container(
@@ -98,7 +101,7 @@ class IncidentReportDialog extends StatelessWidget {
                   ),
                   child: Icon(icon, color: iconColor, size: 24),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,8 +109,8 @@ class IncidentReportDialog extends StatelessWidget {
                       Text(
                         title,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(height: 2),
                       Text(

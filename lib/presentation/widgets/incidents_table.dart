@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_strings.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../domain/models/incident_report.dart';
 
 /// Scrollable Data Table displaying itemized log of submitted incident reports.
@@ -19,7 +22,7 @@ class IncidentsTable extends StatelessWidget {
 
     if (incidents.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(32.0),
+        padding: AppSpacing.paddingXl,
         alignment: Alignment.center,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -29,16 +32,16 @@ class IncidentsTable extends StatelessWidget {
               size: 48,
               color: colorScheme.outline,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
-              'No Incident Reports Logged',
+              AppStrings.noIncidentsLogged,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
-              'Submitted reports will appear in this telemetry table.',
+              AppStrings.noIncidentsSubtitle,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.outline,
               ),
@@ -60,10 +63,10 @@ class IncidentsTable extends StatelessWidget {
             dataRowMinHeight: 48,
             dataRowMaxHeight: 56,
             columns: const [
-              DataColumn(label: Text('Type')),
-              DataColumn(label: Text('Timestamp')),
-              DataColumn(label: Text('Latitude')),
-              DataColumn(label: Text('Longitude')),
+              DataColumn(label: Text(AppStrings.colType)),
+              DataColumn(label: Text(AppStrings.colTimestamp)),
+              DataColumn(label: Text(AppStrings.colLatitude)),
+              DataColumn(label: Text(AppStrings.colLongitude)),
             ],
             rows: incidents.map((incident) {
               return DataRow(
@@ -77,7 +80,7 @@ class IncidentsTable extends StatelessWidget {
                           size: 18,
                           color: _getIncidentColor(incident.type, colorScheme),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Text(_getIncidentTitle(incident.type)),
                       ],
                     ),
@@ -108,22 +111,22 @@ class IncidentsTable extends StatelessWidget {
   static Color _getIncidentColor(IncidentType type, ColorScheme scheme) {
     switch (type) {
       case IncidentType.police:
-        return scheme.primary;
+        return AppColors.policeColor;
       case IncidentType.accident:
-        return scheme.error;
+        return AppColors.accidentColor;
       case IncidentType.trafficHeavy:
-        return Colors.orange;
+        return AppColors.trafficColor;
     }
   }
 
   static String _getIncidentTitle(IncidentType type) {
     switch (type) {
       case IncidentType.police:
-        return 'Police';
+        return AppStrings.policeTitle;
       case IncidentType.accident:
-        return 'Accident';
+        return AppStrings.accidentTitle;
       case IncidentType.trafficHeavy:
-        return 'Traffic Heavy';
+        return AppStrings.trafficHeavyTitle;
     }
   }
 

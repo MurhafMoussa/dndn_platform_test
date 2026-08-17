@@ -27,7 +27,11 @@ class MapCubit extends Cubit<MapState> {
   Future<void> initializeMap() async {
     emit(const MapLoading());
 
-    await _pointsSubscription?.cancel();
+    if (_pointsSubscription != null) {
+      await _pointsSubscription!.cancel();
+      _pointsSubscription = null;
+    }
+
     _pointsSubscription = repository.watchLocationPoints().listen(
       (either) {
         either.fold(
@@ -121,8 +125,18 @@ class MapCubit extends Cubit<MapState> {
 
   @override
   Future<void> close() async {
-    await _pointsSubscription?.cancel();
-    await _locationStreamSubscription?.cancel();
-    return super.close();
+    final sub1 = _pointsSubscription;
+    _pointsSubscription = null;
+    if (sub1 != null) {
+      await sub1.cancel();
+    }
+
+    final sub2 = _locationStreamSubscription;
+    _locationStreamSubscription = null;
+    if (sub2 != null) {
+      await sub2.cancel();
+    }
+
+    await super.close();
   }
 }

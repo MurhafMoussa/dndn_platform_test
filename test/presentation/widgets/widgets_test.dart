@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:dndn_platform_test/domain/models/incident_report.dart';
 import 'package:dndn_platform_test/domain/models/user_role.dart';
@@ -147,14 +148,24 @@ void main() {
     testWidgets('renders drawer items and toggles UserRole', (WidgetTester tester) async {
       final userRoleCubit = UserRoleCubit();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<UserRoleCubit>.value(
-            value: userRoleCubit,
-            child: const Scaffold(
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const Scaffold(
               drawer: AppNavigationDrawer(currentRoute: '/'),
               body: Center(child: Text('Main Content')),
             ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        BlocProvider<UserRoleCubit>.value(
+          value: userRoleCubit,
+          child: MaterialApp.router(
+            routerConfig: router,
           ),
         ),
       );
@@ -176,6 +187,7 @@ void main() {
       expect(userRoleCubit.state, equals(UserRole.admin));
       expect(find.text('Admin Session'), findsOneWidget);
 
+      await tester.pumpWidget(const SizedBox());
       await userRoleCubit.close();
     });
   });

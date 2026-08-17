@@ -89,10 +89,17 @@ class AdminCubit extends Cubit<AdminState> {
   }
 
   Future<void> _cancelSubscriptions() async {
-    await _pointsSubscription?.cancel();
+    final s1 = _pointsSubscription;
     _pointsSubscription = null;
-    await _incidentsSubscription?.cancel();
+    if (s1 != null) {
+      await s1.cancel();
+    }
+
+    final s2 = _incidentsSubscription;
     _incidentsSubscription = null;
+    if (s2 != null) {
+      await s2.cancel();
+    }
   }
 
   @override

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_spacing.dart';
+
 /// Reusable metric card widget for displaying administrative telemetry metrics.
 class TelemetryCard extends StatelessWidget {
   /// Icon representing the telemetry metric.
@@ -33,10 +35,10 @@ class TelemetryCard extends StatelessWidget {
       child: Card(
         elevation: 1,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.borderMd,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: AppSpacing.paddingLg,
           child: Row(
             children: [
               Container(
@@ -44,7 +46,7 @@ class TelemetryCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: (iconColor ?? colorScheme.primary).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadii.borderMd,
                 ),
                 child: Icon(
                   icon,
@@ -52,7 +54,7 @@ class TelemetryCard extends StatelessWidget {
                   color: iconColor ?? colorScheme.primary,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,7 +68,7 @@ class TelemetryCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       value,
                       style: theme.textTheme.titleLarge?.copyWith(

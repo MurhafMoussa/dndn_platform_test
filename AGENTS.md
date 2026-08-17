@@ -70,6 +70,10 @@ Views are responsible for:
 - composing widgets
 - displaying loading/error/empty/success states
 
+Widget File Size Constraint:
+
+- A widget file must not exceed 100-150 lines of code. Split complex UI or view widgets into smaller, cohesive, single-responsibility component widget files.
+
 Views must not:
 
 - perform business logic

@@ -19,8 +19,10 @@
 ## 4. Route Polyline Rendering
 * **Polyline Mapping:** Render a polyline route across the Mapbox canvas generated dynamically from the chronological list of recorded location points stored in local storage.
 
-## 5. Telemetry & Admin Dashboard
-* **Admin Access Layer:** Provide a simplified Admin Dashboard view displaying aggregated tracking metrics, including:
+## 5. Telemetry & Admin Dashboard Access
+* **View-Level Authorization & Role Guarding:** Implement a basic user state/role controller (`UserRole.user` vs `UserRole.admin`) with a simulated role switcher or login guard to restrict access to the dashboard.
+* **Admin Route Guarding:** Protect the `/admin` navigation route so that non-admin sessions are redirected to the map view or shown an unauthorized access indicator.
+* **Telemetry Metrics:** Provide a simplified Admin Dashboard view available strictly to admin roles, displaying:
   * Total distance traveled
   * Total location points recorded
   * Itemized table of submitted incident reports with timestamps and coordinates

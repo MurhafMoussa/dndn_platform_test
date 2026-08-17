@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:fpdart/fpdart.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../../domain/failures/tracking_failure.dart';
 import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
 import '../../domain/models/sync_outbox_item.dart';
 import '../../domain/repositories/tracking_repository.dart';
+import '../../domain/utils/distance_calculator.dart';
 import '../database/tracking_database.dart';
 import '../sync/sync_engine.dart';
 
@@ -209,27 +209,22 @@ class TrackingRepositoryImpl implements TrackingRepository {
     return TaskEither<TrackingFailure, double>(() async {
       try {
         final rows = await database.getAllLocationPoints();
-        if (rows.length < 2) {
-          return const Right(0.0);
-        }
+        final points = rows
+            .map(
+              (row) => LocationPoint(
+                id: row.id,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                timestamp: DateTime.fromMillisecondsSinceEpoch(row.timestamp),
+              ),
+            )
+            .toList();
 
-        double totalDistance = 0.0;
-        for (int i = 0; i < rows.length - 1; i++) {
-          final p1 = rows[i];
-          final p2 = rows[i + 1];
-          totalDistance += Geolocator.distanceBetween(
-            p1.latitude,
-            p1.longitude,
-            p2.latitude,
-            p2.longitude,
-          );
-        }
-
-        return Right(totalDistance);
+        return DistanceCalculator.calculateTotalDistance(points);
       } catch (e) {
         return Left(
-          DistanceCalculationFailure(
-            'Failed to compute total distance traveled: ${e.toString()}',
+          DatabaseFailure(
+            'Failed to retrieve location points for distance calculation: ${e.toString()}',
             e,
           ),
         );

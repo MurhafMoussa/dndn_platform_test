@@ -95,30 +95,41 @@ lib/
 
 ---
 
-### Configuration & Setup
+### Mapbox Configuration Summary
 
-#### 1. Mapbox Downloads Token (Android Build Setup)
-The Mapbox Maps SDK for Android requires a Secret Downloads Token (`sk.xxx`) to download the native SDK binaries via Gradle.
+| Token Type | Variable Name | Purpose | Where to Set |
+| :--- | :--- | :--- | :--- |
+| **Secret Downloads Token** (`sk.xxx`) | `MAPBOX_DOWNLOADS_TOKEN` | Enables Gradle to download native Mapbox Android SDK binaries during build. | Global user Gradle properties:<br>• **Windows:** `C:\Users\<username>\.gradle\gradle.properties`<br>• **macOS/Linux:** `~/.gradle/gradle.properties` |
+| **Public Access Token** (`pk.xxx`) | `ACCESS_TOKEN` | Authorizes vector map tile rendering and satellite imagery at runtime. | App runtime configuration:<br>• `env.json` (`"ACCESS_TOKEN": "pk.xxx"`) or<br>• `--dart-define=ACCESS_TOKEN=pk.xxx` |
 
-Create or update your local Gradle properties file at `~/.gradle/gradle.properties` (or set `MAPBOX_DOWNLOADS_TOKEN` in `android/gradle.properties` locally):
+---
 
+### Step-by-Step Configuration Guide
+
+#### 1. Set Secret Downloads Token (`sk.xxx`) for Android Builds
+To allow Gradle to fetch the native Mapbox Android SDK binary dependency, create or edit your global Gradle properties file:
+
+* **Windows:** `C:\Users\<YourUsername>\.gradle\gradle.properties`
+* **macOS / Linux:** `~/.gradle/gradle.properties`
+
+Add your Secret Downloads Token:
 ```properties
 MAPBOX_DOWNLOADS_TOKEN=sk.your_secret_mapbox_downloads_token_here
 ```
 
-> **Note:** Never commit secret tokens (`sk.xxx`) to version control. The repository's `android/gradle.properties` uses placeholder variables by default.
+> **Security Note:** Keeping secret tokens (`sk.xxx`) in your global user `~/.gradle/gradle.properties` ensures they are never committed to version control or flagged by GitHub Secret Scanning.
 
 ---
 
-#### 2. Environment Configuration (`env.json`)
-The application uses `env.json` to pass runtime environment variables (such as your Mapbox Public Access Token `pk.xxx`) into Flutter.
+#### 2. Set Public Access Token (`pk.xxx`) for App Runtime
+The application reads your Mapbox Public Access Token at launch to load map tiles.
 
-1. **Copy the example configuration:**
+1. **Copy the template file:**
    ```bash
    cp env.json.example env.json
    ```
 
-2. **Add your Mapbox Public Access Token to `env.json`:**
+2. **Add your Public Access Token to `env.json`:**
    ```json
    {
      "ACCESS_TOKEN": "pk.your_public_mapbox_access_token_here"
@@ -127,7 +138,7 @@ The application uses `env.json` to pass runtime environment variables (such as y
 
 ---
 
-### Installation & Execution Commands
+### Execution Commands
 
 1. **Clone the repository:**
    ```bash
@@ -135,7 +146,7 @@ The application uses `env.json` to pass runtime environment variables (such as y
    cd dndn_platform_test
    ```
 
-2. **Install dependencies:**
+2. **Install Flutter dependencies:**
    ```bash
    flutter pub get
    ```
@@ -150,17 +161,17 @@ The application uses `env.json` to pass runtime environment variables (such as y
    flutter analyze
    ```
 
-5. **Run the automated test suite:**
+5. **Run automated unit & widget tests:**
    ```bash
    flutter test
    ```
 
-6. **Run the application with `env.json`:**
+6. **Launch application with `env.json`:**
    ```bash
    flutter run --dart-define-from-file=env.json
    ```
 
-   *Alternatively, pass the token directly via CLI:*
+   *Or pass token via command line:*
    ```bash
    flutter run --dart-define=ACCESS_TOKEN=pk.your_public_mapbox_access_token_here
    ```

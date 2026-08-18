@@ -91,11 +91,31 @@ lib/
 * **Dart SDK:** `^3.12.1`
 * **iOS:** Deployment target `14.0` or higher
 * **Android:** `minSdk 21` or higher
-* **Mapbox Account:** Free account with Mapbox Public Access Token (`pk.xxx`) and Secret Downloads Token (`sk.xxx`).
+* **Mapbox Account:** Free account at [account.mapbox.com](https://account.mapbox.com/) with Public Access Token (`pk.xxx`) and Secret Downloads Token (`sk.xxx`).
 
 ---
 
-### Mapbox Configuration Summary
+### Mapbox Token Guide & Configuration
+
+#### 1. Creating Mapbox Tokens on Mapbox Dashboard
+
+1. **Sign Up / Log In:**
+   * Open [account.mapbox.com](https://account.mapbox.com/) and log in to your account.
+
+2. **Get your Public Access Token (`pk.xxx`):**
+   * On the **Access tokens** dashboard page, copy your **Default public token** (starts with `pk.eyJ...`).
+   * This public key is used at runtime by Flutter to load map styles and satellite imagery.
+
+3. **Generate a Secret Downloads Token (`sk.xxx`):**
+   * Go to [account.mapbox.com/access-tokens/](https://account.mapbox.com/access-tokens/) and click **Create a token**.
+   * Enter a name (e.g., `Flutter Android SDK Downloads`).
+   * In the **Token scopes** section, check **`DOWNLOADS:READ`** (`Downloads:Read`).
+   * Click **Create token**.
+   * **Copy the secret token immediately** (starts with `sk.eyJ...`). *Note: Mapbox displays secret tokens only once!*
+
+---
+
+#### 2. Token Configuration Summary
 
 | Token Type | Variable Name | Purpose | Where to Set |
 | :--- | :--- | :--- | :--- |

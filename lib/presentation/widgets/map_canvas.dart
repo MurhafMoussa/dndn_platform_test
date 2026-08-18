@@ -5,6 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
+import '../cubits/map/map_state.dart';
 import 'map_status_card.dart';
 
 /// Interactive Mapbox canvas widget displaying route points, hazard markers, and status card.
@@ -16,6 +17,7 @@ class MapCanvas extends StatefulWidget {
   final double? currentLng;
   final List<LocationPoint> locationPoints;
   final List<IncidentReport> incidents;
+  final CameraFocusTarget? cameraFocusTarget;
 
   const MapCanvas({
     super.key,
@@ -26,6 +28,7 @@ class MapCanvas extends StatefulWidget {
     this.currentLng,
     this.locationPoints = const [],
     this.incidents = const [],
+    this.cameraFocusTarget,
   });
 
   @override
@@ -46,7 +49,25 @@ class _MapCanvasState extends State<MapCanvas> {
       if (oldWidget.incidents != widget.incidents && _incidentManager != null) {
         _renderIncidentMarkers();
       }
+      if (widget.cameraFocusTarget != null && widget.cameraFocusTarget != oldWidget.cameraFocusTarget) {
+        _flyToCameraFocusTarget(widget.cameraFocusTarget!);
+      }
     }
+  }
+
+  Future<void> _flyToCameraFocusTarget(CameraFocusTarget target) async {
+    if (widget.mapboxMap == null) return;
+    try {
+      await widget.mapboxMap!.flyTo(
+        CameraOptions(
+          center: Point(
+            coordinates: Position(target.longitude, target.latitude),
+          ),
+          zoom: target.zoom,
+        ),
+        MapAnimationOptions(duration: 1000),
+      );
+    } catch (_) {}
   }
 
   Future<void> _handleMapCreated(MapboxMap mapboxMap) async {

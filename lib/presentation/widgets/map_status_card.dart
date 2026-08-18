@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_spacing.dart';
 
-/// Card widget displaying GPS waypoints telemetry, hazard counts, and info popup button.
+/// Card widget displaying GPS waypoints telemetry, hazard counts, and live location coordinates.
 class MapStatusCard extends StatelessWidget {
   final int pointsCount;
   final int incidentsCount;
@@ -17,28 +17,6 @@ class MapStatusCard extends StatelessWidget {
     this.currentLat,
     this.currentLng,
   });
-
-  void _showBreadcrumbsExplanation(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: AppSpacing.sm),
-            Text(AppStrings.gpsBreadcrumbsExplanationTitle),
-          ],
-        ),
-        content: const Text(AppStrings.gpsBreadcrumbsExplanationBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(AppStrings.ok),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,30 +37,18 @@ class MapStatusCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.route_rounded,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      AppStrings.gpsBreadcrumbsTitle,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Icon(
+                  Icons.route_rounded,
+                  size: 20,
+                  color: colorScheme.primary,
                 ),
-                IconButton(
-                  icon: Icon(Icons.info_outline_rounded, size: 20, color: colorScheme.primary),
-                  tooltip: AppStrings.gpsBreadcrumbsExplanationTitle,
-                  onPressed: () => _showBreadcrumbsExplanation(context),
-                  constraints: const BoxConstraints(),
-                  padding: EdgeInsets.zero,
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  AppStrings.gpsBreadcrumbsTitle,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),

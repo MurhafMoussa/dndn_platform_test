@@ -63,6 +63,22 @@ class FakeLocationService extends LocationService {
   final StreamController<Either<TrackingFailure, LocationPoint>> locationStreamController =
       StreamController<Either<TrackingFailure, LocationPoint>>.broadcast();
 
+  LocationPoint? mockCurrentLocation;
+  TrackingFailure? mockLocationFailure;
+
+  @override
+  Future<Either<TrackingFailure, LocationPoint>> getCurrentLocation({
+    dynamic locationSettings,
+  }) async {
+    if (mockLocationFailure != null) {
+      return Left(mockLocationFailure!);
+    }
+    if (mockCurrentLocation != null) {
+      return Right(mockCurrentLocation!);
+    }
+    return const Left(LocationPermissionDeniedFailure(message: 'No location available'));
+  }
+
   @override
   Stream<Either<TrackingFailure, LocationPoint>> getLocationStream({
     dynamic locationSettings,
@@ -171,8 +187,10 @@ void main() {
     });
 
     test('startTracking subscribes to location stream and adds points to repository', () async {
-      await mapCubit.initializeMap();
+      final initFuture = mapCubit.initializeMap();
+      await Future<void>.delayed(Duration.zero);
       fakeRepository.pointsController.add(const Right([]));
+      await initFuture;
 
       final p1 = LocationPoint(
         id: 'p1',
@@ -217,14 +235,50 @@ void main() {
     });
 
     test('stopTracking sets isTracking to false in MapLoaded state', () async {
-      await mapCubit.initializeMap();
+      final initFuture = mapCubit.initializeMap();
+      await Future<void>.delayed(Duration.zero);
       fakeRepository.pointsController.add(const Right([]));
+      await initFuture;
 
       await mapCubit.startTracking();
       expect((mapCubit.state as MapLoaded).isTracking, isTrue);
 
       await mapCubit.stopTracking();
       expect((mapCubit.state as MapLoaded).isTracking, isFalse);
+    });
+
+    test('focusLocation updates cameraFocusTarget in MapLoaded state', () async {
+      final initFuture = mapCubit.initializeMap();
+      await Future<void>.delayed(Duration.zero);
+      fakeRepository.pointsController.add(const Right([]));
+      await initFuture;
+
+      mapCubit.focusLocation(33.5138, 36.2765, zoom: 16.0);
+
+      expect(mapCubit.state, isA<MapLoaded>());
+      final loadedState = mapCubit.state as MapLoaded;
+      expect(loadedState.cameraFocusTarget, equals(const CameraFocusTarget(latitude: 33.5138, longitude: 36.2765, zoom: 16.0)));
+    });
+
+    test('recenterToUserLocation updates cameraFocusTarget to user live location', () async {
+      final userLoc = LocationPoint(
+        id: 'user1',
+        latitude: 33.5100,
+        longitude: 36.2800,
+        timestamp: now,
+      );
+      fakeLocationService.mockCurrentLocation = userLoc;
+
+      final initFuture = mapCubit.initializeMap();
+      await Future<void>.delayed(Duration.zero);
+      fakeRepository.pointsController.add(const Right([]));
+      await initFuture;
+
+      await mapCubit.recenterToUserLocation();
+
+      expect(mapCubit.state, isA<MapLoaded>());
+      final loadedState = mapCubit.state as MapLoaded;
+      expect(loadedState.cameraFocusTarget, equals(CameraFocusTarget(latitude: userLoc.latitude, longitude: userLoc.longitude)));
     });
 
     test('handlePermissionFailure emits MapFailure state with failureOption', () {

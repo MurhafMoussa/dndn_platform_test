@@ -25,7 +25,8 @@ class MapCubit extends Cubit<MapState> {
     required this.locationService,
   }) : super(const MapInitial());
 
-  /// Initializes the map by observing stored location points and incident reports from the repository.
+  /// Initializes the map by observing stored location points and incident reports from the repository,
+  /// and acquiring initial live location fix on start.
   Future<void> initializeMap() async {
     emit(const MapLoading());
 
@@ -57,14 +58,18 @@ class MapCubit extends Cubit<MapState> {
         either.fold(
           (failure) => emit(MapFailure(failure)),
           (points) {
-            final currentLoc = points.isNotEmpty ? points.last : null;
+            final currentLoc = points.isNotEmpty
+                ? points.last
+                : (state is MapLoaded ? (state as MapLoaded).currentLocation : null);
             final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
+            final existingCameraFocus = state is MapLoaded ? (state as MapLoaded).cameraFocusTarget : null;
 
             emit(
               MapLoaded(
                 locationPoints: points,
                 incidents: existingIncidents,
                 currentLocation: currentLoc,
+                cameraFocusTarget: existingCameraFocus,
                 isTracking: _isTracking,
               ),
             );
@@ -80,6 +85,77 @@ class MapCubit extends Cubit<MapState> {
             ),
           ),
         );
+      },
+    );
+
+    final locationResult = await locationService.getCurrentLocation();
+    locationResult.fold(
+      (_) {},
+      (point) {
+        if (state is MapLoaded) {
+          final currentState = state as MapLoaded;
+          emit(
+            currentState.copyWith(
+              currentLocation: point,
+              cameraFocusTarget: CameraFocusTarget(
+                latitude: point.latitude,
+                longitude: point.longitude,
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  /// Sets camera target focus coordinates (e.g. focused on a specific incident).
+  void focusLocation(double latitude, double longitude, {double zoom = 16.0}) {
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      emit(
+        currentState.copyWith(
+          cameraFocusTarget: CameraFocusTarget(
+            latitude: latitude,
+            longitude: longitude,
+            zoom: zoom,
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Resets camera target back to current live user location.
+  Future<void> recenterToUserLocation() async {
+    final locationResult = await locationService.getCurrentLocation();
+    locationResult.fold(
+      (failure) {
+        if (state is MapLoaded) {
+          final currentState = state as MapLoaded;
+          if (currentState.currentLocation != null) {
+            emit(
+              currentState.copyWith(
+                cameraFocusTarget: CameraFocusTarget(
+                  latitude: currentState.currentLocation!.latitude,
+                  longitude: currentState.currentLocation!.longitude,
+                ),
+              ),
+            );
+          }
+        }
+      },
+      (point) {
+        if (state is MapLoaded) {
+          final currentState = state as MapLoaded;
+          emit(
+            currentState.copyWith(
+              currentLocation: point,
+              cameraFocusTarget: CameraFocusTarget(
+                latitude: point.latitude,
+                longitude: point.longitude,
+              ),
+            ),
+          );
+        }
       },
     );
   }

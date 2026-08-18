@@ -18,17 +18,21 @@ A production-oriented, offline-first Flutter application demonstrating **MVVM ar
   * **Police**: Blue circular badge with police shield icon (`Icons.local_police_rounded`).
   * **Accident**: Red circular badge with vehicle collision icon (`Icons.car_crash_rounded`).
   * **Traffic Heavy**: Orange circular badge with traffic signal icon (`Icons.traffic_rounded`).
-* **Camera Focus Navigation:** Smooth animated camera fly-to transitions when tapping "View on Map" from incident logs or recentering to live location.
+* **Camera Focus & Zoom Preservation:** Preserves custom camera zoom level across screen navigation (e.g. switching between Map and Admin dashboard) and animates fly-to target locations.
 
-### 3. Offline-First Outbox Synchronization (`SyncEngine`)
+### 3. Home Screen Widgets (`HomeWidgetService`)
+* **Small Telemetry Widget (2x2):** Displays real-time total distance traveled (`1,250 m` / `3.4 km`) and live GPS status.
+* **Large Telemetry Widget (4x3):** Offscreen canvas painter (`HomeWidgetMapSnapshot`) renders a real high-resolution satellite map snapshot image displaying the full traveled polyline route, green start dot, hazard markers, user circular avatar photo puck, and telemetry summary.
+
+### 4. Offline-First Outbox Synchronization (`SyncEngine`)
 * **Local-First Source of Truth:** All reads prefer locally persisted SQLite data.
 * **Transactional Outbox Queue:** Mutations (`addLocationPoint`, `addIncidentReport`) are written atomically to local storage alongside a pending outbox record (`SyncOutboxItem`).
 * **Resilient Sync Engine:** Processes outbox items through state transitions (`pending` $\rightarrow$ `syncing` $\rightarrow$ `synced` / `failed`). Idempotent retries ensure zero data loss during network outages.
 
-### 4. Hazard Incident Reporting
+### 5. Hazard Incident Reporting
 * **Location-Stamped Submission:** Users can report incidents (Police, Accident, Traffic Heavy) with immediate visual feedback via snackbars and local outbox persistence.
 
-### 5. Administrator Telemetry Dashboard (`AdminView`)
+### 6. Administrator Telemetry Dashboard (`AdminView`)
 * **Telemetry Metrics:** Displays total distance traveled (formatted in meters/kilometers), total location points captured, and an itemized incident report log.
 * **Role-Based Access Control:** Protected by `UserRoleCubit` and `AdminCubit`. Non-admin users see an `UnauthorizedView` with a quick "Switch to Administrator Mode" toggle that seamlessly reloads telemetry without double navigation bars.
 
@@ -64,7 +68,7 @@ lib/
 ├── data/
 │   ├── database/         # Drift SQLite Database & Tables (LocationPoints, Incidents, SyncOutbox)
 │   ├── repositories/     # TrackingRepositoryImpl (Atomic writes & outbox queue)
-│   ├── services/         # LocationService (Geolocator foreground/background streams)
+│   ├── services/         # LocationService, HomeWidgetService
 │   └── sync/             # SyncEngine (Outbox flush processor)
 ├── domain/
 │   ├── failures/         # Strongly-typed TrackingFailure domain hierarchy
@@ -75,7 +79,7 @@ lib/
     ├── cubits/           # MapCubit, AdminCubit, IncidentCubit, UserRoleCubit & States
     ├── navigation/       # AppRouter (GoRouter declarative routes)
     ├── views/            # MapView, AdminView, UnauthorizedView
-    └── widgets/          # MapCanvas, MapFabGroup, IncidentIconHelper, IncidentsTable, etc.
+    └── widgets/          # MapCanvas, MapFabGroup, HomeWidgetMapSnapshot, IncidentIconHelper, IncidentsTable, etc.
 ```
 
 ---
@@ -87,8 +91,43 @@ lib/
 * **Dart SDK:** `^3.12.1`
 * **iOS:** Deployment target `14.0` or higher
 * **Android:** `minSdk 21` or higher
+* **Mapbox Account:** Free account with Mapbox Public Access Token (`pk.xxx`) and Secret Downloads Token (`sk.xxx`).
 
-### Installation & Setup
+---
+
+### Configuration & Setup
+
+#### 1. Mapbox Downloads Token (Android Build Setup)
+The Mapbox Maps SDK for Android requires a Secret Downloads Token (`sk.xxx`) to download the native SDK binaries via Gradle.
+
+Create or update your local Gradle properties file at `~/.gradle/gradle.properties` (or set `MAPBOX_DOWNLOADS_TOKEN` in `android/gradle.properties` locally):
+
+```properties
+MAPBOX_DOWNLOADS_TOKEN=sk.your_secret_mapbox_downloads_token_here
+```
+
+> **Note:** Never commit secret tokens (`sk.xxx`) to version control. The repository's `android/gradle.properties` uses placeholder variables by default.
+
+---
+
+#### 2. Environment Configuration (`env.json`)
+The application uses `env.json` to pass runtime environment variables (such as your Mapbox Public Access Token `pk.xxx`) into Flutter.
+
+1. **Copy the example configuration:**
+   ```bash
+   cp env.json.example env.json
+   ```
+
+2. **Add your Mapbox Public Access Token to `env.json`:**
+   ```json
+   {
+     "ACCESS_TOKEN": "pk.your_public_mapbox_access_token_here"
+   }
+   ```
+
+---
+
+### Installation & Execution Commands
 
 1. **Clone the repository:**
    ```bash
@@ -111,23 +150,28 @@ lib/
    flutter analyze
    ```
 
-5. **Run the test suite:**
+5. **Run the automated test suite:**
    ```bash
    flutter test
    ```
 
-6. **Run the application:**
+6. **Run the application with `env.json`:**
    ```bash
-   flutter run
+   flutter run --dart-define-from-file=env.json
+   ```
+
+   *Alternatively, pass the token directly via CLI:*
+   ```bash
+   flutter run --dart-define=ACCESS_TOKEN=pk.your_public_mapbox_access_token_here
    ```
 
 ---
 
 ## Testing Architecture
 
-The codebase includes an extensive automated test suite (**87 passing tests**) covering all layers:
+The codebase includes an extensive automated test suite (**91 passing tests**) covering all layers:
 
-* **Unit Tests:** Models, `DistanceCalculator`, `LocationService`, `SyncEngine`, `MapCubit`, `AdminCubit`, `IncidentCubit`, `UserRoleCubit`.
+* **Unit Tests:** Models, `DistanceCalculator`, `LocationService`, `SyncEngine`, `HomeWidgetService`, `MapCubit`, `AdminCubit`, `IncidentCubit`, `UserRoleCubit`.
 * **Database Tests:** In-memory Drift SQLite CRUD, reactive table watchers, and outbox state transitions.
 * **Widget Tests:** `MapView`, `AdminView`, `UnauthorizedView`, `MapFabGroup`, `MyLocationButton`, `IncidentsTable`, `TelemetryCard`.
 * **E2E Integration Test:** End-to-end workflow verifying tracking, incident reporting, outbox sync, and role access control (`test/integration/tracking_e2e_test.dart`).
@@ -138,7 +182,7 @@ The codebase includes an extensive automated test suite (**87 passing tests**) c
 
 All changes follow **Conventional Commits**:
 
-* `feat(...)`: New features and domain capabilities.
+* `feat(...)`: New features, domain capabilities, and home screen widgets.
 * `fix(...)`: Bug fixes and edge-case handling.
 * `refactor(...)`: Architectural improvements and SOLID refactoring.
 * `docs(...)`: Documentation and specifications.

@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
           create: (_) => MapCubit(
             repository: repository,
             locationService: locationService,
-          ),
+          )..initializeMap(),
         ),
         BlocProvider<IncidentCubit>(
           create: (_) => IncidentCubit(

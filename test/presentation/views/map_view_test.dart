@@ -88,6 +88,11 @@ class FakeTrackingRepository implements TrackingRepository {
 
 class FakeLocationService extends LocationService {
   @override
+  Future<Either<TrackingFailure, LocationPoint>> getCurrentLocation({dynamic locationSettings}) async {
+    return const Left(LocationPermissionDeniedFailure(message: 'No location available'));
+  }
+
+  @override
   Stream<Either<TrackingFailure, LocationPoint>> getLocationStream({dynamic locationSettings}) {
     return const Stream.empty();
   }
@@ -155,13 +160,11 @@ void main() {
       );
 
       repository.pointsController.add(const Right([]));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
 
       expect(find.text('Map & Live Tracking'), findsOneWidget);
       expect(find.text('Report Hazard'), findsOneWidget);
       expect(find.byIcon(Icons.my_location_rounded), findsOneWidget);
-      expect(find.text('GPS Route Breadcrumbs'), findsOneWidget);
     });
 
     testWidgets('tapping Report Hazard FAB opens IncidentReportDialog', (WidgetTester tester) async {
@@ -184,8 +187,7 @@ void main() {
       );
 
       repository.pointsController.add(const Right([]));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Report Hazard'));
       await tester.pumpAndSettle();

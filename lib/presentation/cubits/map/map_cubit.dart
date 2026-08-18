@@ -10,7 +10,7 @@ import '../../../domain/models/location_point.dart';
 import '../../../domain/repositories/tracking_repository.dart';
 import 'map_state.dart';
 
-/// Cubit managing location points stream, active tracking service, and map presentation states.
+/// Cubit managing location tracking streams, incidents, camera focus, and map presentation states.
 class MapCubit extends Cubit<MapState> {
   final TrackingRepository repository;
   final LocationService locationService;
@@ -18,97 +18,46 @@ class MapCubit extends Cubit<MapState> {
   StreamSubscription<Either<TrackingFailure, List<LocationPoint>>>? _pointsSubscription;
   StreamSubscription<Either<TrackingFailure, List<IncidentReport>>>? _incidentsSubscription;
   StreamSubscription<Either<TrackingFailure, LocationPoint>>? _locationStreamSubscription;
-  bool _isTracking = false;
 
   MapCubit({
     required this.repository,
     required this.locationService,
   }) : super(const MapInitial());
 
-  /// Initializes the map by observing stored location points and incident reports from the repository,
-  /// and acquiring initial live location fix on start.
+  /// Initializes the map screen by setting up streams and starting location tracking.
   Future<void> initializeMap() async {
     emit(const MapLoading());
-
-    if (_pointsSubscription != null) {
-      await _pointsSubscription!.cancel();
-      _pointsSubscription = null;
-    }
-    if (_incidentsSubscription != null) {
-      await _incidentsSubscription!.cancel();
-      _incidentsSubscription = null;
-    }
-
-    _incidentsSubscription = repository.watchIncidents().listen(
-      (either) {
-        either.fold(
-          (_) {},
-          (incidentsList) {
-            if (state is MapLoaded) {
-              final currentState = state as MapLoaded;
-              emit(currentState.copyWith(incidents: incidentsList));
-            }
-          },
-        );
-      },
-    );
-
-    _pointsSubscription = repository.watchLocationPoints().listen(
-      (either) {
-        either.fold(
-          (failure) => emit(MapFailure(failure)),
-          (points) {
-            final currentLoc = points.isNotEmpty
-                ? points.last
-                : (state is MapLoaded ? (state as MapLoaded).currentLocation : null);
-            final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
-            final existingCameraFocus = state is MapLoaded ? (state as MapLoaded).cameraFocusTarget : null;
-
-            emit(
-              MapLoaded(
-                locationPoints: points,
-                incidents: existingIncidents,
-                currentLocation: currentLoc,
-                cameraFocusTarget: existingCameraFocus,
-                isTracking: _isTracking,
-              ),
-            );
-          },
-        );
-      },
-      onError: (Object error) {
-        emit(
-          MapFailure(
-            DatabaseFailure(
-              'Error observing location points: ${error.toString()}',
-              error,
-            ),
-          ),
-        );
-      },
-    );
-
-    final locationResult = await locationService.getCurrentLocation();
-    locationResult.fold(
-      (_) {},
-      (point) {
-        if (state is MapLoaded) {
-          final currentState = state as MapLoaded;
-          emit(
-            currentState.copyWith(
-              currentLocation: point,
-              cameraFocusTarget: CameraFocusTarget(
-                latitude: point.latitude,
-                longitude: point.longitude,
-              ),
-            ),
-          );
-        }
-      },
-    );
+    await _cancelSubscriptions();
+    _subscribeToIncidents();
+    _subscribeToLocationPoints();
+    await startTracking();
+    await _acquireInitialLocation();
   }
 
-  /// Sets camera target focus coordinates (e.g. focused on a specific incident).
+  /// Starts periodic GPS tracking and sets [isTracking] to true.
+  Future<void> startTracking() async {
+    await _locationStreamSubscription?.cancel();
+    _subscribeToLiveLocationStream();
+    _updateTrackingState(isTracking: true);
+  }
+
+  /// Stops active GPS location stream and sets [isTracking] to false.
+  Future<void> stopTracking() async {
+    await _locationStreamSubscription?.cancel();
+    _locationStreamSubscription = null;
+    _updateTrackingState(isTracking: false);
+  }
+
+  /// Toggles periodic GPS tracking between active and paused.
+  Future<void> toggleTracking() async {
+    if (state is MapLoaded && (state as MapLoaded).isTracking) {
+      await stopTracking();
+    } else {
+      await startTracking();
+    }
+  }
+
+  /// Sets camera target focus coordinates for map navigation.
   void focusLocation(double latitude, double longitude, {double zoom = 16.0}) {
     if (state is MapLoaded) {
       final currentState = state as MapLoaded;
@@ -124,128 +73,139 @@ class MapCubit extends Cubit<MapState> {
     }
   }
 
-  /// Resets camera target back to current live user location.
+  /// Resets camera target back to user live location.
   Future<void> recenterToUserLocation() async {
+    final currentLoc = state is MapLoaded ? (state as MapLoaded).currentLocation : null;
+    if (currentLoc != null) {
+      focusLocation(currentLoc.latitude, currentLoc.longitude);
+    }
+
     final locationResult = await locationService.getCurrentLocation();
     locationResult.fold(
-      (failure) {
-        if (state is MapLoaded) {
-          final currentState = state as MapLoaded;
-          if (currentState.currentLocation != null) {
-            emit(
-              currentState.copyWith(
-                cameraFocusTarget: CameraFocusTarget(
-                  latitude: currentState.currentLocation!.latitude,
-                  longitude: currentState.currentLocation!.longitude,
-                ),
-              ),
-            );
-          }
+      (_) {
+        if (currentLoc != null) {
+          focusLocation(currentLoc.latitude, currentLoc.longitude);
         }
       },
       (point) {
-        if (state is MapLoaded) {
-          final currentState = state as MapLoaded;
-          emit(
-            currentState.copyWith(
-              currentLocation: point,
-              cameraFocusTarget: CameraFocusTarget(
-                latitude: point.latitude,
-                longitude: point.longitude,
-              ),
-            ),
-          );
-        }
+        _onLiveLocationPointReceived(point);
+        focusLocation(point.latitude, point.longitude);
       },
     );
   }
 
-  /// Starts periodic GPS location tracking and records points to repository.
-  Future<void> startTracking() async {
-    _isTracking = true;
-    if (state is MapLoaded) {
-      final currentState = state as MapLoaded;
-      emit(currentState.copyWith(isTracking: true));
-    }
-
-    await _locationStreamSubscription?.cancel();
-    _locationStreamSubscription = locationService.getLocationStream().listen(
-      (either) async {
-        await either.fold(
-          (failure) async {
-            _isTracking = false;
-            emit(MapFailure(failure));
-          },
-          (point) async {
-            await repository.addLocationPoint(point);
-            if (state is MapLoaded) {
-              final currentState = state as MapLoaded;
-              emit(
-                currentState.copyWith(
-                  currentLocation: point,
-                  isTracking: true,
-                ),
-              );
-            }
-          },
-        );
-      },
-      onError: (Object error) {
-        _isTracking = false;
-        emit(
-          MapFailure(
-            LocationPermissionDeniedFailure(
-              message: 'Location tracking stream error: ${error.toString()}',
-              cause: error,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Stops periodic GPS location tracking.
-  Future<void> stopTracking() async {
-    _isTracking = false;
-    await _locationStreamSubscription?.cancel();
-    _locationStreamSubscription = null;
-
-    if (state is MapLoaded) {
-      final currentState = state as MapLoaded;
-      emit(currentState.copyWith(isTracking: false));
-    }
-  }
-
-  /// Opens system location settings to allow user to turn on GPS.
+  /// Opens system location settings dialog.
   Future<void> openLocationSettings() async {
     await locationService.openLocationSettings();
   }
 
-  /// Explicitly handles location permission failures.
+  /// Handles explicit location permission failure.
   void handlePermissionFailure(LocationPermissionDeniedFailure failure) {
     emit(MapFailure(failure));
   }
 
+  // --- Private Single Responsibility Helper Methods ---
+
+  void _subscribeToIncidents() {
+    _incidentsSubscription = repository.watchIncidents().listen(
+      (either) => either.fold((_) {}, _onIncidentListReceived),
+    );
+  }
+
+  void _subscribeToLocationPoints() {
+    _pointsSubscription = repository.watchLocationPoints().listen(
+      (either) => either.fold((failure) => emit(MapFailure(failure)), _onLocationPointsReceived),
+      onError: (Object error) => emit(
+        MapFailure(DatabaseFailure('Error observing location points: ${error.toString()}', error)),
+      ),
+    );
+  }
+
+  void _subscribeToLiveLocationStream() {
+    _locationStreamSubscription = locationService.getLocationStream().listen(
+      (either) async {
+        await either.fold(
+          (failure) async => emit(MapFailure(failure)),
+          (point) async {
+            await repository.addLocationPoint(point);
+            _onLiveLocationPointReceived(point);
+          },
+        );
+      },
+      onError: (Object error) => emit(
+        MapFailure(
+          LocationPermissionDeniedFailure(
+            message: 'Location tracking stream error: ${error.toString()}',
+            cause: error,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _acquireInitialLocation() async {
+    final locationResult = await locationService.getCurrentLocation();
+    locationResult.fold(
+      (_) {},
+      (point) {
+        _onLiveLocationPointReceived(point);
+        focusLocation(point.latitude, point.longitude);
+      },
+    );
+  }
+
+  void _onIncidentListReceived(List<IncidentReport> incidents) {
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      emit(currentState.copyWith(incidents: incidents));
+    }
+  }
+
+  void _onLocationPointsReceived(List<LocationPoint> points) {
+    final currentLoc = points.isNotEmpty ? points.last : (state is MapLoaded ? (state as MapLoaded).currentLocation : null);
+    final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
+    final existingCameraFocus = state is MapLoaded ? (state as MapLoaded).cameraFocusTarget : null;
+    final currentlyTracking = state is MapLoaded ? (state as MapLoaded).isTracking : true;
+
+    emit(
+      MapLoaded(
+        locationPoints: points,
+        incidents: existingIncidents,
+        currentLocation: currentLoc,
+        cameraFocusTarget: existingCameraFocus,
+        isTracking: currentlyTracking,
+      ),
+    );
+  }
+
+  void _onLiveLocationPointReceived(LocationPoint point) {
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      emit(currentState.copyWith(currentLocation: point));
+    } else {
+      emit(MapLoaded(locationPoints: const [], currentLocation: point));
+    }
+  }
+
+  void _updateTrackingState({required bool isTracking}) {
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      emit(currentState.copyWith(isTracking: isTracking));
+    }
+  }
+
+  Future<void> _cancelSubscriptions() async {
+    await _pointsSubscription?.cancel();
+    _pointsSubscription = null;
+    await _incidentsSubscription?.cancel();
+    _incidentsSubscription = null;
+    await _locationStreamSubscription?.cancel();
+    _locationStreamSubscription = null;
+  }
+
   @override
   Future<void> close() async {
-    final sub1 = _pointsSubscription;
-    _pointsSubscription = null;
-    if (sub1 != null) {
-      await sub1.cancel();
-    }
-
-    final subInc = _incidentsSubscription;
-    _incidentsSubscription = null;
-    if (subInc != null) {
-      await subInc.cancel();
-    }
-
-    final sub2 = _locationStreamSubscription;
-    _locationStreamSubscription = null;
-    if (sub2 != null) {
-      await sub2.cancel();
-    }
-
+    await _cancelSubscriptions();
     await super.close();
   }
 }

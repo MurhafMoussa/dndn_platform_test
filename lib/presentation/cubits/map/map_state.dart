@@ -56,6 +56,8 @@ class MapLoaded extends MapState {
   /// Optional camera target coordinates to center/fly map view to.
   final CameraFocusTarget? cameraFocusTarget;
 
+
+
   /// Flag indicating whether periodic background location tracking is active.
   final bool isTracking;
 
@@ -64,7 +66,7 @@ class MapLoaded extends MapState {
     this.incidents = const [],
     this.currentLocation,
     this.cameraFocusTarget,
-    this.isTracking = false,
+    this.isTracking = true,
   });
 
   /// Helper copyWith for immutable state updates.

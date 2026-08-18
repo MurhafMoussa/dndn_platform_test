@@ -1,14 +1,17 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
 import '../cubits/map/map_state.dart';
-import 'map_status_card.dart';
+import 'incident_icon_helper.dart';
 
-/// Interactive Mapbox canvas widget displaying route points, hazard markers, and status card.
+/// Interactive Mapbox canvas widget displaying route points, custom hazard icon markers, and user location puck.
 class MapCanvas extends StatefulWidget {
   final MapboxMap? mapboxMap;
   final ValueChanged<MapboxMap> onMapCreated;
@@ -37,22 +40,49 @@ class MapCanvas extends StatefulWidget {
 
 class _MapCanvasState extends State<MapCanvas> {
   PolylineAnnotationManager? _polylineManager;
-  CircleAnnotationManager? _incidentManager;
+  PointAnnotationManager? _incidentPointManager;
+  late final CameraViewportState _initialViewport;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialViewport = CameraViewportState(
+      zoom: AppConstants.defaultZoom,
+      center: Point(
+        coordinates: Position(
+          widget.currentLng ?? AppConstants.defaultLongitude,
+          widget.currentLat ?? AppConstants.defaultLatitude,
+        ),
+      ),
+    );
+  }
 
   @override
   void didUpdateWidget(MapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.mapboxMap != null) {
-      if (oldWidget.locationPoints != widget.locationPoints && _polylineManager != null) {
-        _renderRoutePolyline();
-      }
-      if (oldWidget.incidents != widget.incidents && _incidentManager != null) {
-        _renderIncidentMarkers();
-      }
-      if (widget.cameraFocusTarget != null && widget.cameraFocusTarget != oldWidget.cameraFocusTarget) {
-        _flyToCameraFocusTarget(widget.cameraFocusTarget!);
-      }
+    if (widget.mapboxMap == null) return;
+
+    if (_shouldUpdatePolyline(oldWidget)) {
+      _renderRoutePolyline();
     }
+    if (_shouldUpdateIncidents(oldWidget)) {
+      _renderIncidentMarkers();
+    }
+    if (widget.cameraFocusTarget != null && widget.cameraFocusTarget != oldWidget.cameraFocusTarget) {
+      _flyToCameraFocusTarget(widget.cameraFocusTarget!);
+    }
+  }
+
+  bool _shouldUpdatePolyline(MapCanvas oldWidget) {
+    return _polylineManager != null &&
+        (oldWidget.locationPoints.length != widget.locationPoints.length ||
+            oldWidget.locationPoints != widget.locationPoints);
+  }
+
+  bool _shouldUpdateIncidents(MapCanvas oldWidget) {
+    return _incidentPointManager != null &&
+        (oldWidget.incidents.length != widget.incidents.length ||
+            oldWidget.incidents != widget.incidents);
   }
 
   Future<void> _flyToCameraFocusTarget(CameraFocusTarget target) async {
@@ -60,9 +90,7 @@ class _MapCanvasState extends State<MapCanvas> {
     try {
       await widget.mapboxMap!.flyTo(
         CameraOptions(
-          center: Point(
-            coordinates: Position(target.longitude, target.latitude),
-          ),
+          center: Point(coordinates: Position(target.longitude, target.latitude)),
           zoom: target.zoom,
         ),
         MapAnimationOptions(duration: 1000),
@@ -73,29 +101,82 @@ class _MapCanvasState extends State<MapCanvas> {
   Future<void> _handleMapCreated(MapboxMap mapboxMap) async {
     widget.onMapCreated(mapboxMap);
     try {
+      Uint8List? customPuckBytes;
+      try {
+        final byteData = await rootBundle.load('assets/images/user_puck.png');
+        customPuckBytes = await _createCircularAvatarPuck(byteData.buffer.asUint8List(), size: 80.0);
+      } catch (_) {}
+
       await mapboxMap.location.updateSettings(
         LocationComponentSettings(
           enabled: true,
           puckBearingEnabled: true,
           locationPuck: LocationPuck(
-            locationPuck2D: DefaultLocationPuck2D(),
+            locationPuck2D: customPuckBytes != null
+                ? LocationPuck2D(topImage: customPuckBytes)
+                : DefaultLocationPuck2D(),
           ),
         ),
       );
       _polylineManager = await mapboxMap.annotations.createPolylineAnnotationManager();
-      _incidentManager = await mapboxMap.annotations.createCircleAnnotationManager();
+      _incidentPointManager = await mapboxMap.annotations.createPointAnnotationManager();
       await _renderRoutePolyline();
       await _renderIncidentMarkers();
+      if (widget.cameraFocusTarget != null) {
+        await _flyToCameraFocusTarget(widget.cameraFocusTarget!);
+      }
     } catch (_) {}
+  }
+
+  Future<Uint8List> _createCircularAvatarPuck(Uint8List rawBytes, {double size = 80.0}) async {
+    final codec = await ui.instantiateImageCodec(
+      rawBytes,
+      targetWidth: size.toInt(),
+      targetHeight: size.toInt(),
+    );
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, size, size));
+
+    final center = Offset(size / 2, size / 2);
+    final radius = size / 2 - 6;
+
+    // Drop shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawCircle(Offset(center.dx, center.dy + 2), radius, shadowPaint);
+
+    // Clip circular image
+    canvas.save();
+    final clipPath = Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+    canvas.clipPath(clipPath);
+
+    final srcRect = Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
+    final dstRect = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawImageRect(image, srcRect, dstRect, Paint()..filterQuality = ui.FilterQuality.high);
+    canvas.restore();
+
+    // White border ring
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0;
+    canvas.drawCircle(center, radius, borderPaint);
+
+    final picture = recorder.endRecording();
+    final avatarImage = await picture.toImage(size.toInt(), size.toInt());
+    final byteData = await avatarImage.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
   }
 
   Future<void> _renderRoutePolyline() async {
     if (_polylineManager == null || widget.locationPoints.length < 2) return;
     try {
       await _polylineManager!.deleteAll();
-      final coordinates = widget.locationPoints
-          .map((p) => Position(p.longitude, p.latitude))
-          .toList();
+      final coordinates = widget.locationPoints.map((p) => Position(p.longitude, p.latitude)).toList();
       await _polylineManager!.create(
         PolylineAnnotationOptions(
           geometry: LineString(coordinates: coordinates),
@@ -107,64 +188,35 @@ class _MapCanvasState extends State<MapCanvas> {
   }
 
   Future<void> _renderIncidentMarkers() async {
-    if (_incidentManager == null) return;
+    if (_incidentPointManager == null) return;
     try {
-      await _incidentManager!.deleteAll();
+      await _incidentPointManager!.deleteAll();
       if (widget.incidents.isEmpty) return;
 
-      final options = widget.incidents.map((incident) {
-        int color;
-        switch (incident.type) {
-          case IncidentType.police:
-            color = Colors.blue.toARGB32();
-          case IncidentType.accident:
-            color = Colors.red.toARGB32();
-          case IncidentType.trafficHeavy:
-            color = Colors.orange.toARGB32();
-        }
-        return CircleAnnotationOptions(
-          geometry: Point(coordinates: Position(incident.longitude, incident.latitude)),
-          circleRadius: 10.0,
-          circleColor: color,
-          circleStrokeWidth: 2.0,
-          circleStrokeColor: Colors.white.toARGB32(),
+      final options = <PointAnnotationOptions>[];
+      for (final incident in widget.incidents) {
+        final iconBytes = await IncidentIconHelper.getIconBytes(incident.type);
+        options.add(
+          PointAnnotationOptions(
+            geometry: Point(coordinates: Position(incident.longitude, incident.latitude)),
+            image: iconBytes,
+            iconSize: 0.8,
+          ),
         );
-      }).toList();
+      }
 
-      await _incidentManager!.createMulti(options);
+      await _incidentPointManager!.createMulti(options);
     } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        MapWidget(
-          key: const ValueKey('mapbox_map_widget'),
-          styleUri: MapboxStyles.MAPBOX_STREETS,
-          viewport: CameraViewportState(
-            zoom: AppConstants.defaultZoom,
-            center: Point(
-              coordinates: Position(
-                widget.currentLng ?? AppConstants.defaultLongitude,
-                widget.currentLat ?? AppConstants.defaultLatitude,
-              ),
-            ),
-          ),
-          onMapCreated: _handleMapCreated,
-        ),
-        Positioned(
-          bottom: AppSpacing.lg,
-          left: AppSpacing.lg,
-          right: AppSpacing.lg,
-          child: MapStatusCard(
-            pointsCount: widget.pointsCount,
-            incidentsCount: widget.incidents.length,
-            currentLat: widget.currentLat,
-            currentLng: widget.currentLng,
-          ),
-        ),
-      ],
+    return MapWidget(
+      key: const ValueKey('mapbox_map_widget'),
+      styleUri: MapboxStyles.SATELLITE_STREETS,
+      viewport: _initialViewport,
+      textureView: true,
+      onMapCreated: _handleMapCreated,
     );
   }
 }

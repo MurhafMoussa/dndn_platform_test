@@ -14,26 +14,20 @@ import '../cubits/map/map_state.dart';
 import '../widgets/app_navigation_drawer.dart';
 import '../widgets/incident_report_dialog.dart';
 import '../widgets/map_canvas.dart';
-import '../widgets/map_tracking_status_banner.dart';
-import '../widgets/my_location_button.dart';
+import '../widgets/map_fab_group.dart';
 
 /// Screen displaying interactive live map, traveled polyline route, and incident reporting FAB.
 class MapView extends StatefulWidget {
   final double? targetLat;
   final double? targetLng;
 
-  const MapView({
-    super.key,
-    this.targetLat,
-    this.targetLng,
-  });
+  const MapView({super.key, this.targetLat, this.targetLng});
 
   @override
   State<MapView> createState() => _MapViewState();
 }
 
 class _MapViewState extends State<MapView> {
-  // ignore: unused_field
   MapboxMap? _mapboxMap;
 
   @override
@@ -47,10 +41,8 @@ class _MapViewState extends State<MapView> {
           mapCubit.focusLocation(widget.targetLat!, widget.targetLng!);
         }
       });
-    } else {
-      if (widget.targetLat != null && widget.targetLng != null) {
-        mapCubit.focusLocation(widget.targetLat!, widget.targetLng!);
-      }
+    } else if (widget.targetLat != null && widget.targetLng != null) {
+      mapCubit.focusLocation(widget.targetLat!, widget.targetLng!);
     }
   }
 
@@ -70,17 +62,15 @@ class _MapViewState extends State<MapView> {
 
     showDialog<void>(
       context: context,
-      builder: (_) {
-        return IncidentReportDialog(
-          onSelectIncident: (type) {
-            context.read<IncidentCubit>().submitIncident(
-                  type: type,
-                  latitude: lat,
-                  longitude: lng,
-                );
-          },
-        );
-      },
+      builder: (_) => IncidentReportDialog(
+        onSelectIncident: (type) {
+          context.read<IncidentCubit>().submitIncident(
+                type: type,
+                latitude: lat,
+                longitude: lng,
+              );
+        },
+      ),
     );
   }
 
@@ -108,28 +98,7 @@ class _MapViewState extends State<MapView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(AppStrings.mapTitle),
-          actions: [
-            BlocBuilder<MapCubit, MapState>(
-              builder: (context, state) {
-                if (state is! MapLoaded) return const SizedBox.shrink();
-                final isTracking = state.isTracking;
-                return IconButton(
-                  icon: Icon(
-                    isTracking ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                    color: isTracking ? colorScheme.primary : colorScheme.onSurface,
-                  ),
-                  tooltip: isTracking ? AppStrings.pauseTracking : AppStrings.startTracking,
-                  onPressed: () {
-                    final cubit = context.read<MapCubit>();
-                    isTracking ? cubit.stopTracking() : cubit.startTracking();
-                  },
-                );
-              },
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text(AppStrings.mapTitle)),
         drawer: const AppNavigationDrawer(currentRoute: AppConstants.mapRoute),
         body: BlocBuilder<MapCubit, MapState>(
           builder: (context, state) {
@@ -137,53 +106,18 @@ class _MapViewState extends State<MapView> {
               return const Center(child: CircularProgressIndicator());
             }
             if (state is MapFailure) {
-              final isServiceDisabled = state.failure is LocationServiceDisabledFailure ||
-                  state.failure.message.contains('disabled');
-              return Center(
-                child: Padding(
-                  padding: AppSpacing.screenPadding,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.location_off_rounded, size: 48, color: colorScheme.error),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(AppStrings.locationFailureTitle),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(state.failure.message, textAlign: TextAlign.center),
-                      const SizedBox(height: AppSpacing.xl),
-                      if (isServiceDisabled) ...[
-                        ElevatedButton.icon(
-                          onPressed: () => context.read<MapCubit>().openLocationSettings(),
-                          icon: const Icon(Icons.settings_rounded),
-                          label: const Text('Open Location Settings'),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      OutlinedButton.icon(
-                        onPressed: () => context.read<MapCubit>().initializeMap(),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text(AppStrings.retry),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _MapErrorView(failure: state.failure);
             }
             if (state is MapLoaded) {
-              return Stack(
-                children: [
-                  MapCanvas(
-                    mapboxMap: _mapboxMap,
-                    onMapCreated: (map) => _mapboxMap = map,
-                    pointsCount: state.locationPoints.length,
-                    currentLat: state.currentLocation?.latitude,
-                    currentLng: state.currentLocation?.longitude,
-                    locationPoints: state.locationPoints,
-                    incidents: state.incidents,
-                    cameraFocusTarget: state.cameraFocusTarget,
-                  ),
-                  if (state.isTracking) const MapTrackingStatusBanner(),
-                ],
+              return MapCanvas(
+                mapboxMap: _mapboxMap,
+                onMapCreated: (map) => _mapboxMap = map,
+                pointsCount: state.locationPoints.length,
+                currentLat: state.currentLocation?.latitude,
+                currentLng: state.currentLocation?.longitude,
+                locationPoints: state.locationPoints,
+                incidents: state.incidents,
+                cameraFocusTarget: state.cameraFocusTarget,
               );
             }
             return const SizedBox.shrink();
@@ -192,26 +126,53 @@ class _MapViewState extends State<MapView> {
         floatingActionButton: BlocBuilder<MapCubit, MapState>(
           builder: (context, state) {
             final loc = state is MapLoaded ? state.currentLocation : null;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                MyLocationButton(
-                  onPressed: () => context.read<MapCubit>().recenterToUserLocation(),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Semantics(
-                  label: 'Report hazard incident button',
-                  button: true,
-                  child: FloatingActionButton.extended(
-                    onPressed: () => _showReportIncidentDialog(context, loc),
-                    icon: const Icon(Icons.add_location_alt_rounded),
-                    label: const Text(AppStrings.reportHazard),
-                  ),
-                ),
-              ],
+            return MapFabGroup(
+              onRecenter: () => context.read<MapCubit>().recenterToUserLocation(),
+              onReportHazard: () => _showReportIncidentDialog(context, loc),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _MapErrorView extends StatelessWidget {
+  final TrackingFailure failure;
+
+  const _MapErrorView({required this.failure});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isServiceDisabled = failure is LocationServiceDisabledFailure || failure.message.contains('disabled');
+
+    return Center(
+      child: Padding(
+        padding: AppSpacing.screenPadding,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.location_off_rounded, size: 48, color: colorScheme.error),
+            const SizedBox(height: AppSpacing.lg),
+            const Text(AppStrings.locationFailureTitle),
+            const SizedBox(height: AppSpacing.sm),
+            Text(failure.message, textAlign: TextAlign.center),
+            const SizedBox(height: AppSpacing.xl),
+            if (isServiceDisabled) ...[
+              ElevatedButton.icon(
+                onPressed: () => context.read<MapCubit>().openLocationSettings(),
+                icon: const Icon(Icons.settings_rounded),
+                label: const Text('Open Location Settings'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            OutlinedButton.icon(
+              onPressed: () => context.read<MapCubit>().initializeMap(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text(AppStrings.retry),
+            ),
+          ],
         ),
       ),
     );

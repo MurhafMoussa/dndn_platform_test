@@ -95,6 +95,34 @@ void main() {
     fakeLocationService.dispose();
   });
 
+  group('CameraFocusTarget & MapLoaded', () {
+    test('CameraFocusTarget holds properties and equality', () {
+      const target1 = CameraFocusTarget(latitude: 33.5138, longitude: 36.2765, zoom: 16.0);
+      const target2 = CameraFocusTarget(latitude: 33.5138, longitude: 36.2765, zoom: 16.0);
+      const target3 = CameraFocusTarget(latitude: 10.0, longitude: 20.0);
+
+      expect(target1.latitude, equals(33.5138));
+      expect(target1.longitude, equals(36.2765));
+      expect(target1.zoom, equals(16.0));
+      expect(target1, equals(target2));
+      expect(target1, isNot(equals(target3)));
+    });
+
+    test('MapLoaded holds cameraFocusTarget and copyWith updates correctly', () {
+      const target = CameraFocusTarget(latitude: 33.5138, longitude: 36.2765);
+      const state = MapLoaded(
+        locationPoints: [],
+        cameraFocusTarget: target,
+      );
+
+      expect(state.cameraFocusTarget, equals(target));
+
+      const newTarget = CameraFocusTarget(latitude: 34.0, longitude: 35.0, zoom: 14.0);
+      final updatedState = state.copyWith(cameraFocusTarget: newTarget);
+      expect(updatedState.cameraFocusTarget, equals(newTarget));
+    });
+  });
+
   group('MapCubit', () {
     final now = DateTime.now();
 

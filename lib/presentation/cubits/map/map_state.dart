@@ -5,6 +5,22 @@ import '../../../domain/failures/tracking_failure.dart';
 import '../../../domain/models/incident_report.dart';
 import '../../../domain/models/location_point.dart';
 
+/// Camera focus target coordinates and zoom level for map navigation.
+class CameraFocusTarget extends Equatable {
+  final double latitude;
+  final double longitude;
+  final double zoom;
+
+  const CameraFocusTarget({
+    required this.latitude,
+    required this.longitude,
+    this.zoom = 16.0,
+  });
+
+  @override
+  List<Object?> get props => [latitude, longitude, zoom];
+}
+
 /// Base abstract presentation state for [MapCubit].
 abstract class MapState extends Equatable {
   const MapState();
@@ -37,6 +53,9 @@ class MapLoaded extends MapState {
   /// Current live GPS location point if available.
   final LocationPoint? currentLocation;
 
+  /// Optional camera target coordinates to center/fly map view to.
+  final CameraFocusTarget? cameraFocusTarget;
+
   /// Flag indicating whether periodic background location tracking is active.
   final bool isTracking;
 
@@ -44,6 +63,7 @@ class MapLoaded extends MapState {
     required this.locationPoints,
     this.incidents = const [],
     this.currentLocation,
+    this.cameraFocusTarget,
     this.isTracking = false,
   });
 
@@ -52,18 +72,26 @@ class MapLoaded extends MapState {
     List<LocationPoint>? locationPoints,
     List<IncidentReport>? incidents,
     LocationPoint? currentLocation,
+    CameraFocusTarget? cameraFocusTarget,
     bool? isTracking,
   }) {
     return MapLoaded(
       locationPoints: locationPoints ?? this.locationPoints,
       incidents: incidents ?? this.incidents,
       currentLocation: currentLocation ?? this.currentLocation,
+      cameraFocusTarget: cameraFocusTarget ?? this.cameraFocusTarget,
       isTracking: isTracking ?? this.isTracking,
     );
   }
 
   @override
-  List<Object?> get props => [locationPoints, incidents, currentLocation, isTracking];
+  List<Object?> get props => [
+        locationPoints,
+        incidents,
+        currentLocation,
+        cameraFocusTarget,
+        isTracking,
+      ];
 }
 
 /// State emitted when location tracking or permission verification fails.

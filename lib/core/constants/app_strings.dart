@@ -13,6 +13,8 @@ abstract final class AppStrings {
   static const String pauseTracking = 'Pause Tracking';
   static const String startTracking = 'Start Tracking';
   static const String reportHazard = 'Report Hazard';
+  static const String viewOnMap = 'View on Map';
+  static const String myLocation = 'My Location';
   static const String backgroundTrackingActive = 'Background Tracking Active';
   static const String locationHistoryLoading = 'Loading location history...';
   static const String locationFailureTitle = 'Location Service Failure';
@@ -41,6 +43,9 @@ abstract final class AppStrings {
   static const String telemetryOverview = 'Telemetry Overview';
   static const String totalDistance = 'Total Distance Traveled';
   static const String totalPoints = 'Total Location Points';
+  static const String telemetryExplanationsTitle = 'Telemetry Metrics Explanation';
+  static const String telemetryExplanationsBody =
+      'Total Location Points represent discrete GPS fixes recorded locally. Total Distance is calculated using geodesic paths between consecutive coordinates.';
   static const String incidentReportsLog = 'Incident Reports Log';
   static const String noIncidentsLogged = 'No Incident Reports Logged';
   static const String noIncidentsSubtitle = 'Submitted reports will appear in this telemetry table.';

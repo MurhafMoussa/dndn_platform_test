@@ -10,9 +10,13 @@ class IncidentsTable extends StatelessWidget {
   /// Chronological list of incident reports.
   final List<IncidentReport> incidents;
 
+  /// Optional callback invoked when the user taps "View on Map" for an incident.
+  final void Function(double latitude, double longitude)? onViewOnMap;
+
   const IncidentsTable({
     super.key,
     required this.incidents,
+    this.onViewOnMap,
   });
 
   @override
@@ -67,6 +71,7 @@ class IncidentsTable extends StatelessWidget {
               DataColumn(label: Text(AppStrings.colTimestamp)),
               DataColumn(label: Text(AppStrings.colLatitude)),
               DataColumn(label: Text(AppStrings.colLongitude)),
+              DataColumn(label: Text('')),
             ],
             rows: incidents.map((incident) {
               return DataRow(
@@ -88,6 +93,15 @@ class IncidentsTable extends StatelessWidget {
                   DataCell(Text(_formatTimestamp(incident.timestamp))),
                   DataCell(Text(incident.latitude.toStringAsFixed(4))),
                   DataCell(Text(incident.longitude.toStringAsFixed(4))),
+                  DataCell(
+                    IconButton(
+                      icon: const Icon(Icons.location_on_outlined, size: 20),
+                      tooltip: AppStrings.viewOnMap,
+                      onPressed: onViewOnMap != null
+                          ? () => onViewOnMap!(incident.latitude, incident.longitude)
+                          : null,
+                    ),
+                  ),
                 ],
               );
             }).toList(),

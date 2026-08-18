@@ -99,6 +99,45 @@ void main() {
       expect(find.text('37.7749'), findsOneWidget);
       expect(find.text('-122.4194'), findsOneWidget);
     });
+
+    testWidgets('invokes onViewOnMap callback with coordinates when View on Map button is tapped', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final now = DateTime(2026, 8, 17, 14, 30, 0);
+      final incident = IncidentReport(
+        id: 'inc1',
+        type: IncidentType.police,
+        latitude: 33.5138,
+        longitude: 36.2765,
+        timestamp: now,
+      );
+
+      double? targetLat;
+      double? targetLng;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: IncidentsTable(
+              incidents: [incident],
+              onViewOnMap: (lat, lng) {
+                targetLat = lat;
+                targetLng = lng;
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.location_on_outlined), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.location_on_outlined));
+      await tester.pumpAndSettle();
+
+      expect(targetLat, equals(33.5138));
+      expect(targetLng, equals(36.2765));
+    });
   });
 
   group('IncidentReportDialog', () {

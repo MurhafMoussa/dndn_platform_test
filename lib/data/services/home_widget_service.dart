@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:home_widget/home_widget.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
 import '../../presentation/widgets/home_widget_map_snapshot.dart';
 
@@ -35,6 +36,7 @@ class HomeWidgetService {
   Future<void> updateWidgetData({
     required double distanceMeters,
     required List<LocationPoint> points,
+    List<IncidentReport> incidents = const [],
     bool isTracking = true,
   }) async {
     try {
@@ -47,6 +49,7 @@ class HomeWidgetService {
 
       final snapshotBytes = await HomeWidgetMapSnapshot.generateSnapshotBytes(
         points: points,
+        incidents: incidents,
       );
 
       final tempDir = await getTemporaryDirectory();

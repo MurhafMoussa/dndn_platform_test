@@ -192,10 +192,12 @@ class MapCubit extends Cubit<MapState> {
     try {
       final distanceResult = await repository.getTotalDistanceMeters().run();
       final distance = distanceResult.getOrElse((_) => 0.0);
+      final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
       final isTracking = state is MapLoaded ? (state as MapLoaded).isTracking : true;
       await homeWidgetService.updateWidgetData(
         distanceMeters: distance,
         points: points,
+        incidents: existingIncidents,
         isTracking: isTracking,
       );
     } catch (_) {}

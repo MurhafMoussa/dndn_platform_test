@@ -45,6 +45,7 @@ dependencies:
   # Location & Mapping
   geolocator: ^14.0.3
   mapbox_maps_flutter: ^2.3.0
+  home_widget: ^0.7.0
 
   # Navigation
   go_router: ^17.5.0

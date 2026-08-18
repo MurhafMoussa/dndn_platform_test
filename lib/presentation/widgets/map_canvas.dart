@@ -3,11 +3,13 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
+import '../cubits/map/map_cubit.dart';
 import '../cubits/map/map_state.dart';
 import 'incident_icon_helper.dart';
 
@@ -21,6 +23,7 @@ class MapCanvas extends StatefulWidget {
   final List<LocationPoint> locationPoints;
   final List<IncidentReport> incidents;
   final CameraFocusTarget? cameraFocusTarget;
+  final double savedZoom;
 
   const MapCanvas({
     super.key,
@@ -32,6 +35,7 @@ class MapCanvas extends StatefulWidget {
     this.locationPoints = const [],
     this.incidents = const [],
     this.cameraFocusTarget,
+    this.savedZoom = 14.0,
   });
 
   @override
@@ -46,13 +50,14 @@ class _MapCanvasState extends State<MapCanvas> {
   @override
   void initState() {
     super.initState();
+    final initialZoom = widget.cameraFocusTarget?.zoom ?? widget.savedZoom;
+    final initialLat = widget.cameraFocusTarget?.latitude ?? widget.currentLat ?? AppConstants.defaultLatitude;
+    final initialLng = widget.cameraFocusTarget?.longitude ?? widget.currentLng ?? AppConstants.defaultLongitude;
+
     _initialViewport = CameraViewportState(
-      zoom: AppConstants.defaultZoom,
+      zoom: initialZoom,
       center: Point(
-        coordinates: Position(
-          widget.currentLng ?? AppConstants.defaultLongitude,
-          widget.currentLat ?? AppConstants.defaultLatitude,
-        ),
+        coordinates: Position(initialLng, initialLat),
       ),
     );
   }
@@ -217,6 +222,9 @@ class _MapCanvasState extends State<MapCanvas> {
       viewport: _initialViewport,
       textureView: true,
       onMapCreated: _handleMapCreated,
+      onCameraChangeListener: (data) {
+        context.read<MapCubit>().saveZoomLevel(data.cameraState.zoom);
+      },
     );
   }
 }

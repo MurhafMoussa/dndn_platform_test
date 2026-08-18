@@ -273,6 +273,22 @@ void main() {
     );
 
     test(
+      'saveZoomLevel updates savedZoom in MapLoaded state',
+      () async {
+        final initFuture = mapCubit.initializeMap();
+        await Future<void>.delayed(Duration.zero);
+        fakeRepository.pointsController.add(const Right([]));
+        await initFuture;
+
+        mapCubit.saveZoomLevel(18.5);
+
+        expect(mapCubit.state, isA<MapLoaded>());
+        final loadedState = mapCubit.state as MapLoaded;
+        expect(loadedState.savedZoom, equals(18.5));
+      },
+    );
+
+    test(
       'focusLocation updates cameraFocusTarget in MapLoaded state',
       () async {
         final initFuture = mapCubit.initializeMap();
@@ -323,6 +339,7 @@ void main() {
             CameraFocusTarget(
               latitude: userLoc.latitude,
               longitude: userLoc.longitude,
+              zoom: 14.0,
             ),
           ),
         );

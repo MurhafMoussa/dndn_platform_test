@@ -118,6 +118,7 @@ class _MapViewState extends State<MapView> {
                 locationPoints: state.locationPoints,
                 incidents: state.incidents,
                 cameraFocusTarget: state.cameraFocusTarget,
+                savedZoom: state.savedZoom,
               );
             }
             return const SizedBox.shrink();

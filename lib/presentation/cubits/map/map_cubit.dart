@@ -61,6 +61,16 @@ class MapCubit extends Cubit<MapState> {
     }
   }
 
+  /// Saves current map camera zoom level to state for preservation across screen navigation.
+  void saveZoomLevel(double zoom) {
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      if (currentState.savedZoom != zoom) {
+        emit(currentState.copyWith(savedZoom: zoom));
+      }
+    }
+  }
+
   /// Sets camera target focus coordinates for map navigation.
   void focusLocation(double latitude, double longitude, {double zoom = 16.0}) {
     if (state is MapLoaded) {
@@ -72,6 +82,7 @@ class MapCubit extends Cubit<MapState> {
             longitude: longitude,
             zoom: zoom,
           ),
+          savedZoom: zoom,
         ),
       );
     }
@@ -80,20 +91,22 @@ class MapCubit extends Cubit<MapState> {
   /// Resets camera target back to user live location.
   Future<void> recenterToUserLocation() async {
     final currentLoc = state is MapLoaded ? (state as MapLoaded).currentLocation : null;
+    final savedZoom = state is MapLoaded ? (state as MapLoaded).savedZoom : 16.0;
+
     if (currentLoc != null) {
-      focusLocation(currentLoc.latitude, currentLoc.longitude);
+      focusLocation(currentLoc.latitude, currentLoc.longitude, zoom: savedZoom);
     }
 
     final locationResult = await locationService.getCurrentLocation();
     locationResult.fold(
       (_) {
         if (currentLoc != null) {
-          focusLocation(currentLoc.latitude, currentLoc.longitude);
+          focusLocation(currentLoc.latitude, currentLoc.longitude, zoom: savedZoom);
         }
       },
       (point) {
         _onLiveLocationPointReceived(point);
-        focusLocation(point.latitude, point.longitude);
+        focusLocation(point.latitude, point.longitude, zoom: savedZoom);
       },
     );
   }
@@ -159,7 +172,8 @@ class MapCubit extends Cubit<MapState> {
       (_) {},
       (point) {
         _onLiveLocationPointReceived(point);
-        focusLocation(point.latitude, point.longitude);
+        final currentZoom = state is MapLoaded ? (state as MapLoaded).savedZoom : 16.0;
+        focusLocation(point.latitude, point.longitude, zoom: currentZoom);
       },
     );
   }
@@ -176,6 +190,7 @@ class MapCubit extends Cubit<MapState> {
     final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
     final existingCameraFocus = state is MapLoaded ? (state as MapLoaded).cameraFocusTarget : null;
     final currentlyTracking = state is MapLoaded ? (state as MapLoaded).isTracking : true;
+    final savedZoom = state is MapLoaded ? (state as MapLoaded).savedZoom : 14.0;
 
     emit(
       MapLoaded(
@@ -184,6 +199,7 @@ class MapCubit extends Cubit<MapState> {
         currentLocation: currentLoc,
         cameraFocusTarget: existingCameraFocus,
         isTracking: currentlyTracking,
+        savedZoom: savedZoom,
       ),
     );
   }

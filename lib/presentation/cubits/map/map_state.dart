@@ -56,10 +56,11 @@ class MapLoaded extends MapState {
   /// Optional camera target coordinates to center/fly map view to.
   final CameraFocusTarget? cameraFocusTarget;
 
-
-
   /// Flag indicating whether periodic background location tracking is active.
   final bool isTracking;
+
+  /// Cached camera zoom level for preserving state across screen navigation.
+  final double savedZoom;
 
   const MapLoaded({
     required this.locationPoints,
@@ -67,6 +68,7 @@ class MapLoaded extends MapState {
     this.currentLocation,
     this.cameraFocusTarget,
     this.isTracking = true,
+    this.savedZoom = 14.0,
   });
 
   /// Helper copyWith for immutable state updates.
@@ -76,6 +78,7 @@ class MapLoaded extends MapState {
     LocationPoint? currentLocation,
     CameraFocusTarget? cameraFocusTarget,
     bool? isTracking,
+    double? savedZoom,
   }) {
     return MapLoaded(
       locationPoints: locationPoints ?? this.locationPoints,
@@ -83,6 +86,7 @@ class MapLoaded extends MapState {
       currentLocation: currentLocation ?? this.currentLocation,
       cameraFocusTarget: cameraFocusTarget ?? this.cameraFocusTarget,
       isTracking: isTracking ?? this.isTracking,
+      savedZoom: savedZoom ?? this.savedZoom,
     );
   }
 
@@ -93,6 +97,7 @@ class MapLoaded extends MapState {
         currentLocation,
         cameraFocusTarget,
         isTracking,
+        savedZoom,
       ];
 }
 

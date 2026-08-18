@@ -19,6 +19,7 @@ class LocationService {
       return AndroidSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 1,
+        forceLocationManager: true,
         intervalDuration: const Duration(seconds: 2),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Background Location Tracking',
@@ -55,11 +56,6 @@ class LocationService {
   /// Verifies GPS service availability and permission status.
   Future<Either<TrackingFailure, Unit>> checkAndRequestPermission() async {
     try {
-      final serviceEnabled = await _geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return const Left(LocationServiceDisabledFailure());
-      }
-
       LocationPermission permission = await _geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await _geolocator.requestPermission();
@@ -80,6 +76,11 @@ class LocationService {
             isPermanentlyDenied: true,
           ),
         );
+      }
+
+      final serviceEnabled = await _geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return const Left(LocationServiceDisabledFailure());
       }
 
       return const Right(unit);

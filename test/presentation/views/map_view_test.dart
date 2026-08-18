@@ -160,7 +160,7 @@ void main() {
 
       expect(find.text('Map & Live Tracking'), findsOneWidget);
       expect(find.text('Report Hazard'), findsOneWidget);
-      expect(find.text('Interactive Map View'), findsOneWidget);
+      expect(find.text('GPS Route Breadcrumbs'), findsOneWidget);
     });
 
     testWidgets('tapping Report Hazard FAB opens IncidentReportDialog', (WidgetTester tester) async {

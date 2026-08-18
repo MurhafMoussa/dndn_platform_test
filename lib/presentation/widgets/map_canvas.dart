@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
+import 'map_status_card.dart';
 
-/// Interactive Mapbox canvas widget displaying route points and status card.
+/// Interactive Mapbox canvas widget displaying route points, hazard markers, and status card.
 class MapCanvas extends StatefulWidget {
   final MapboxMap? mapboxMap;
   final ValueChanged<MapboxMap> onMapCreated;
@@ -14,6 +15,7 @@ class MapCanvas extends StatefulWidget {
   final double? currentLat;
   final double? currentLng;
   final List<LocationPoint> locationPoints;
+  final List<IncidentReport> incidents;
 
   const MapCanvas({
     super.key,
@@ -23,6 +25,7 @@ class MapCanvas extends StatefulWidget {
     this.currentLat,
     this.currentLng,
     this.locationPoints = const [],
+    this.incidents = const [],
   });
 
   @override
@@ -31,13 +34,17 @@ class MapCanvas extends StatefulWidget {
 
 class _MapCanvasState extends State<MapCanvas> {
   PolylineAnnotationManager? _polylineManager;
+  CircleAnnotationManager? _incidentManager;
 
   @override
   void didUpdateWidget(MapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.mapboxMap != null && _polylineManager != null) {
-      if (oldWidget.locationPoints != widget.locationPoints) {
+    if (widget.mapboxMap != null) {
+      if (oldWidget.locationPoints != widget.locationPoints && _polylineManager != null) {
         _renderRoutePolyline();
+      }
+      if (oldWidget.incidents != widget.incidents && _incidentManager != null) {
+        _renderIncidentMarkers();
       }
     }
   }
@@ -55,10 +62,10 @@ class _MapCanvasState extends State<MapCanvas> {
         ),
       );
       _polylineManager = await mapboxMap.annotations.createPolylineAnnotationManager();
+      _incidentManager = await mapboxMap.annotations.createCircleAnnotationManager();
       await _renderRoutePolyline();
-    } catch (_) {
-      // Ignore if map component initialization throws in test environments
-    }
+      await _renderIncidentMarkers();
+    } catch (_) {}
   }
 
   Future<void> _renderRoutePolyline() async {
@@ -78,11 +85,37 @@ class _MapCanvasState extends State<MapCanvas> {
     } catch (_) {}
   }
 
+  Future<void> _renderIncidentMarkers() async {
+    if (_incidentManager == null) return;
+    try {
+      await _incidentManager!.deleteAll();
+      if (widget.incidents.isEmpty) return;
+
+      final options = widget.incidents.map((incident) {
+        int color;
+        switch (incident.type) {
+          case IncidentType.police:
+            color = Colors.blue.toARGB32();
+          case IncidentType.accident:
+            color = Colors.red.toARGB32();
+          case IncidentType.trafficHeavy:
+            color = Colors.orange.toARGB32();
+        }
+        return CircleAnnotationOptions(
+          geometry: Point(coordinates: Position(incident.longitude, incident.latitude)),
+          circleRadius: 10.0,
+          circleColor: color,
+          circleStrokeWidth: 2.0,
+          circleStrokeColor: Colors.white.toARGB32(),
+        );
+      }).toList();
+
+      await _incidentManager!.createMulti(options);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Stack(
       children: [
         MapWidget(
@@ -103,55 +136,11 @@ class _MapCanvasState extends State<MapCanvas> {
           bottom: AppSpacing.lg,
           left: AppSpacing.lg,
           right: AppSpacing.lg,
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: AppRadii.borderMd),
-            color: colorScheme.surface.withValues(alpha: 0.9),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.map_rounded,
-                        size: 20,
-                        color: colorScheme.primary,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        AppStrings.mapCanvasTitle,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Recorded Points: ${widget.pointsCount} | Polyline Route Segments: ${widget.pointsCount > 1 ? widget.pointsCount - 1 : 0}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (widget.currentLat != null && widget.currentLng != null) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Live Location: ${widget.currentLat!.toStringAsFixed(4)}, ${widget.currentLng!.toStringAsFixed(4)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+          child: MapStatusCard(
+            pointsCount: widget.pointsCount,
+            incidentsCount: widget.incidents.length,
+            currentLat: widget.currentLat,
+            currentLng: widget.currentLng,
           ),
         ),
       ],

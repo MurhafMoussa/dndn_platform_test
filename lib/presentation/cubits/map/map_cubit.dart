@@ -5,6 +5,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../data/services/location_service.dart';
 import '../../../domain/failures/tracking_failure.dart';
+import '../../../domain/models/incident_report.dart';
 import '../../../domain/models/location_point.dart';
 import '../../../domain/repositories/tracking_repository.dart';
 import 'map_state.dart';
@@ -15,6 +16,7 @@ class MapCubit extends Cubit<MapState> {
   final LocationService locationService;
 
   StreamSubscription<Either<TrackingFailure, List<LocationPoint>>>? _pointsSubscription;
+  StreamSubscription<Either<TrackingFailure, List<IncidentReport>>>? _incidentsSubscription;
   StreamSubscription<Either<TrackingFailure, LocationPoint>>? _locationStreamSubscription;
   bool _isTracking = false;
 
@@ -23,7 +25,7 @@ class MapCubit extends Cubit<MapState> {
     required this.locationService,
   }) : super(const MapInitial());
 
-  /// Initializes the map by observing stored location points from the repository.
+  /// Initializes the map by observing stored location points and incident reports from the repository.
   Future<void> initializeMap() async {
     emit(const MapLoading());
 
@@ -31,6 +33,24 @@ class MapCubit extends Cubit<MapState> {
       await _pointsSubscription!.cancel();
       _pointsSubscription = null;
     }
+    if (_incidentsSubscription != null) {
+      await _incidentsSubscription!.cancel();
+      _incidentsSubscription = null;
+    }
+
+    _incidentsSubscription = repository.watchIncidents().listen(
+      (either) {
+        either.fold(
+          (_) {},
+          (incidentsList) {
+            if (state is MapLoaded) {
+              final currentState = state as MapLoaded;
+              emit(currentState.copyWith(incidents: incidentsList));
+            }
+          },
+        );
+      },
+    );
 
     _pointsSubscription = repository.watchLocationPoints().listen(
       (either) {
@@ -38,10 +58,12 @@ class MapCubit extends Cubit<MapState> {
           (failure) => emit(MapFailure(failure)),
           (points) {
             final currentLoc = points.isNotEmpty ? points.last : null;
+            final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
 
             emit(
               MapLoaded(
                 locationPoints: points,
+                incidents: existingIncidents,
                 currentLocation: currentLoc,
                 isTracking: _isTracking,
               ),
@@ -134,6 +156,12 @@ class MapCubit extends Cubit<MapState> {
     _pointsSubscription = null;
     if (sub1 != null) {
       await sub1.cancel();
+    }
+
+    final subInc = _incidentsSubscription;
+    _incidentsSubscription = null;
+    if (subInc != null) {
+      await subInc.cancel();
     }
 
     final sub2 = _locationStreamSubscription;

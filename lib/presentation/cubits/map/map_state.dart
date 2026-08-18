@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '../../../domain/failures/tracking_failure.dart';
+import '../../../domain/models/incident_report.dart';
 import '../../../domain/models/location_point.dart';
 
 /// Base abstract presentation state for [MapCubit].
@@ -30,6 +31,9 @@ class MapLoaded extends MapState {
   /// Chronological list of recorded location points for rendering polylines.
   final List<LocationPoint> locationPoints;
 
+  /// List of submitted incident reports to render as map markers.
+  final List<IncidentReport> incidents;
+
   /// Current live GPS location point if available.
   final LocationPoint? currentLocation;
 
@@ -38,6 +42,7 @@ class MapLoaded extends MapState {
 
   const MapLoaded({
     required this.locationPoints,
+    this.incidents = const [],
     this.currentLocation,
     this.isTracking = false,
   });
@@ -45,18 +50,20 @@ class MapLoaded extends MapState {
   /// Helper copyWith for immutable state updates.
   MapLoaded copyWith({
     List<LocationPoint>? locationPoints,
+    List<IncidentReport>? incidents,
     LocationPoint? currentLocation,
     bool? isTracking,
   }) {
     return MapLoaded(
       locationPoints: locationPoints ?? this.locationPoints,
+      incidents: incidents ?? this.incidents,
       currentLocation: currentLocation ?? this.currentLocation,
       isTracking: isTracking ?? this.isTracking,
     );
   }
 
   @override
-  List<Object?> get props => [locationPoints, currentLocation, isTracking];
+  List<Object?> get props => [locationPoints, incidents, currentLocation, isTracking];
 }
 
 /// State emitted when location tracking or permission verification fails.

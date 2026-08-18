@@ -153,6 +153,7 @@ class _MapViewState extends State<MapView> {
                     currentLat: state.currentLocation?.latitude,
                     currentLng: state.currentLocation?.longitude,
                     locationPoints: state.locationPoints,
+                    incidents: state.incidents,
                   ),
                   if (state.isTracking) const MapTrackingStatusBanner(),
                 ],

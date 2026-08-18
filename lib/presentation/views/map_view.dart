@@ -15,10 +15,18 @@ import '../widgets/app_navigation_drawer.dart';
 import '../widgets/incident_report_dialog.dart';
 import '../widgets/map_canvas.dart';
 import '../widgets/map_tracking_status_banner.dart';
+import '../widgets/my_location_button.dart';
 
 /// Screen displaying interactive live map, traveled polyline route, and incident reporting FAB.
 class MapView extends StatefulWidget {
-  const MapView({super.key});
+  final double? targetLat;
+  final double? targetLng;
+
+  const MapView({
+    super.key,
+    this.targetLat,
+    this.targetLng,
+  });
 
   @override
   State<MapView> createState() => _MapViewState();
@@ -34,7 +42,25 @@ class _MapViewState extends State<MapView> {
     MapboxOptions.setAccessToken(AppConstants.defaultMapboxToken);
     final mapCubit = context.read<MapCubit>();
     if (mapCubit.state is MapInitial) {
-      mapCubit.initializeMap();
+      mapCubit.initializeMap().then((_) {
+        if (mounted && widget.targetLat != null && widget.targetLng != null) {
+          mapCubit.focusLocation(widget.targetLat!, widget.targetLng!);
+        }
+      });
+    } else {
+      if (widget.targetLat != null && widget.targetLng != null) {
+        mapCubit.focusLocation(widget.targetLat!, widget.targetLng!);
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(MapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if ((widget.targetLat != oldWidget.targetLat || widget.targetLng != oldWidget.targetLng) &&
+        widget.targetLat != null &&
+        widget.targetLng != null) {
+      context.read<MapCubit>().focusLocation(widget.targetLat!, widget.targetLng!);
     }
   }
 
@@ -154,6 +180,7 @@ class _MapViewState extends State<MapView> {
                     currentLng: state.currentLocation?.longitude,
                     locationPoints: state.locationPoints,
                     incidents: state.incidents,
+                    cameraFocusTarget: state.cameraFocusTarget,
                   ),
                   if (state.isTracking) const MapTrackingStatusBanner(),
                 ],
@@ -165,14 +192,24 @@ class _MapViewState extends State<MapView> {
         floatingActionButton: BlocBuilder<MapCubit, MapState>(
           builder: (context, state) {
             final loc = state is MapLoaded ? state.currentLocation : null;
-            return Semantics(
-              label: 'Report hazard incident button',
-              button: true,
-              child: FloatingActionButton.extended(
-                onPressed: () => _showReportIncidentDialog(context, loc),
-                icon: const Icon(Icons.add_location_alt_rounded),
-                label: const Text(AppStrings.reportHazard),
-              ),
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                MyLocationButton(
+                  onPressed: () => context.read<MapCubit>().recenterToUserLocation(),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Semantics(
+                  label: 'Report hazard incident button',
+                  button: true,
+                  child: FloatingActionButton.extended(
+                    onPressed: () => _showReportIncidentDialog(context, loc),
+                    icon: const Icon(Icons.add_location_alt_rounded),
+                    label: const Text(AppStrings.reportHazard),
+                  ),
+                ),
+              ],
             );
           },
         ),

@@ -29,7 +29,13 @@ abstract final class AppRouter {
       GoRoute(
         path: AppConstants.mapRoute,
         name: 'map',
-        builder: (context, state) => const MapView(),
+        builder: (context, state) {
+          final latStr = state.uri.queryParameters['lat'];
+          final lngStr = state.uri.queryParameters['lng'];
+          final lat = latStr != null ? double.tryParse(latStr) : null;
+          final lng = lngStr != null ? double.tryParse(lngStr) : null;
+          return MapView(targetLat: lat, targetLng: lng);
+        },
       ),
       GoRoute(
         path: AppConstants.adminRoute,

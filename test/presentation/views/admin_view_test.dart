@@ -186,10 +186,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Admin Telemetry Dashboard'), findsOneWidget);
-      expect(find.text('Total Distance Traveled'), findsOneWidget);
+      expect(find.text('Total Distance Traveled'), findsNWidgets(2));
       expect(find.text('1,250 m'), findsOneWidget);
-      expect(find.text('Total Location Points'), findsOneWidget);
+      expect(find.text('Total Location Points'), findsNWidgets(2));
       expect(find.text('1'), findsOneWidget);
+      expect(find.text('Telemetry Metrics Explanation'), findsOneWidget);
       expect(find.text('Incident Reports Log'), findsOneWidget);
       expect(find.text('Police'), findsOneWidget);
     });

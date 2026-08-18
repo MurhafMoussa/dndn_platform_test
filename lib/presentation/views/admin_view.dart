@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_strings.dart';
@@ -8,6 +9,7 @@ import '../../domain/models/user_role.dart';
 import '../cubits/admin/admin_cubit.dart';
 import '../cubits/admin/admin_state.dart';
 import '../cubits/user_role_cubit.dart';
+import '../widgets/admin_telemetry_explanation_card.dart';
 import '../widgets/admin_telemetry_overview.dart';
 import '../widgets/app_navigation_drawer.dart';
 import '../widgets/incidents_table.dart';
@@ -91,6 +93,8 @@ class _AdminViewState extends State<AdminView> {
                         formattedDistance: state.formattedDistance,
                         totalPointsCount: state.totalPointsCount,
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const AdminTelemetryExplanationCard(),
                       const SizedBox(height: AppSpacing.xl),
                       Text(
                         AppStrings.incidentReportsLog,
@@ -100,7 +104,12 @@ class _AdminViewState extends State<AdminView> {
                       Card(
                         child: Padding(
                           padding: AppSpacing.paddingSm,
-                          child: IncidentsTable(incidents: state.incidents),
+                          child: IncidentsTable(
+                            incidents: state.incidents,
+                            onViewOnMap: (lat, lng) {
+                              context.go('/?lat=$lat&lng=$lng');
+                            },
+                          ),
                         ),
                       ),
                     ],

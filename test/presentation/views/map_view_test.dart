@@ -160,6 +160,7 @@ void main() {
 
       expect(find.text('Map & Live Tracking'), findsOneWidget);
       expect(find.text('Report Hazard'), findsOneWidget);
+      expect(find.byIcon(Icons.my_location_rounded), findsOneWidget);
       expect(find.text('GPS Route Breadcrumbs'), findsOneWidget);
     });
 

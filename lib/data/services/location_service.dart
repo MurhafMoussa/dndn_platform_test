@@ -20,7 +20,6 @@ class LocationService {
         accuracy: LocationAccuracy.high,
         distanceFilter: 1,
         intervalDuration: const Duration(seconds: 2),
-        timeLimit: const Duration(seconds: 2),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Background Location Tracking',
           notificationText: 'Location tracking is active in background.',
@@ -35,7 +34,6 @@ class LocationService {
         accuracy: LocationAccuracy.high,
         activityType: ActivityType.fitness,
         distanceFilter: 1,
-        timeLimit: const Duration(seconds: 2),
         pauseLocationUpdatesAutomatically: false,
         allowBackgroundLocationUpdates: true,
         showBackgroundLocationIndicator: true,
@@ -45,7 +43,6 @@ class LocationService {
     return const LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 1,
-      timeLimit: Duration(seconds: 2),
     );
   }
 

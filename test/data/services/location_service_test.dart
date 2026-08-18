@@ -53,7 +53,6 @@ void main() {
     test('defaultLocationSettings configures 2s interval and 1m distance filter', () {
       expect(LocationService.defaultLocationSettings.accuracy, equals(LocationAccuracy.high));
       expect(LocationService.defaultLocationSettings.distanceFilter, equals(1));
-      expect(LocationService.defaultLocationSettings.timeLimit, equals(const Duration(seconds: 2)));
     });
 
     test('yields LocationServiceDisabledFailure when GPS service is disabled', () async {

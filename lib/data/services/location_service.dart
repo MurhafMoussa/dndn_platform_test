@@ -24,7 +24,7 @@ class LocationService {
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Background Location Tracking',
           notificationText: 'Location tracking is active in background.',
-          notificationIcon: AndroidResource(name: 'ic_launcher'),
+          notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
           enableWakeLock: true,
         ),
       );
@@ -96,6 +96,15 @@ class LocationService {
     }
   }
 
+  /// Opens native device location settings so the user can enable GPS services.
+  Future<bool> openLocationSettings() async {
+    try {
+      return await _geolocator.openLocationSettings();
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Gets single current location fix.
   Future<Either<TrackingFailure, LocationPoint>> getCurrentLocation({
     LocationSettings? locationSettings,
@@ -154,12 +163,16 @@ class LocationService {
         );
       }
     } catch (e) {
-      yield Left(
-        LocationPermissionDeniedFailure(
-          message: 'Location stream error: ${e.toString()}',
-          cause: e,
-        ),
-      );
+      if (e is LocationServiceDisabledException) {
+        yield const Left(LocationServiceDisabledFailure());
+      } else {
+        yield Left(
+          LocationPermissionDeniedFailure(
+            message: 'Location stream error: ${e.toString()}',
+            cause: e,
+          ),
+        );
+      }
     }
   }
 }

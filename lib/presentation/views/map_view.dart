@@ -5,6 +5,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../domain/failures/tracking_failure.dart';
 import '../../domain/models/location_point.dart';
 import '../cubits/incident/incident_cubit.dart';
 import '../cubits/incident/incident_state.dart';
@@ -110,19 +111,29 @@ class _MapViewState extends State<MapView> {
               return const Center(child: CircularProgressIndicator());
             }
             if (state is MapFailure) {
+              final isServiceDisabled = state.failure is LocationServiceDisabledFailure ||
+                  state.failure.message.contains('disabled');
               return Center(
                 child: Padding(
                   padding: AppSpacing.screenPadding,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline_rounded, size: 48, color: colorScheme.error),
+                      Icon(Icons.location_off_rounded, size: 48, color: colorScheme.error),
                       const SizedBox(height: AppSpacing.lg),
                       Text(AppStrings.locationFailureTitle),
                       const SizedBox(height: AppSpacing.sm),
                       Text(state.failure.message, textAlign: TextAlign.center),
                       const SizedBox(height: AppSpacing.xl),
-                      ElevatedButton.icon(
+                      if (isServiceDisabled) ...[
+                        ElevatedButton.icon(
+                          onPressed: () => context.read<MapCubit>().openLocationSettings(),
+                          icon: const Icon(Icons.settings_rounded),
+                          label: const Text('Open Location Settings'),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                      OutlinedButton.icon(
                         onPressed: () => context.read<MapCubit>().initializeMap(),
                         icon: const Icon(Icons.refresh_rounded),
                         label: const Text(AppStrings.retry),
@@ -141,6 +152,7 @@ class _MapViewState extends State<MapView> {
                     pointsCount: state.locationPoints.length,
                     currentLat: state.currentLocation?.latitude,
                     currentLng: state.currentLocation?.longitude,
+                    locationPoints: state.locationPoints,
                   ),
                   if (state.isTracking) const MapTrackingStatusBanner(),
                 ],

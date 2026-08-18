@@ -118,6 +118,11 @@ class MapCubit extends Cubit<MapState> {
     }
   }
 
+  /// Opens system location settings to allow user to turn on GPS.
+  Future<void> openLocationSettings() async {
+    await locationService.openLocationSettings();
+  }
+
   /// Explicitly handles location permission failures.
   void handlePermissionFailure(LocationPermissionDeniedFailure failure) {
     emit(MapFailure(failure));

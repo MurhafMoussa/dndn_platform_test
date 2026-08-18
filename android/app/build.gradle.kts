@@ -19,6 +19,7 @@ android {
         applicationId = "com.example.dndn_platform_test"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Explicitly enforce Mapbox minimum SDK requirement (minSdk 21)
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

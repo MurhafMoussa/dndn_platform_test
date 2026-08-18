@@ -36,18 +36,18 @@ dependencies:
 
   # State management
   flutter_bloc: ^9.1.0
-  hydrated_bloc: ^10.0.0
+  hydrated_bloc: ^11.0.0
 
   # Database / Persistence
   drift: ^2.22.0
-  sqlite3_flutter_libs: ^0.5.28
+  sqlite3_flutter_libs: ^0.6.0+eol
 
   # Location & Mapping
-  geolocator: ^13.0.2
+  geolocator: ^14.0.3
   mapbox_maps_flutter: ^2.3.0
 
   # Navigation
-  go_router: ^14.8.0
+  go_router: ^17.5.0
 
   # Utilities
   path_provider: ^2.1.5

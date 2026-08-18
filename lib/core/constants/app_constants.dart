@@ -8,13 +8,16 @@ abstract final class AppConstants {
 
   /// Default Mapbox Access Token fallback
   static const String defaultMapboxToken = String.fromEnvironment(
-    'MAPBOX_ACCESS_TOKEN',
-    defaultValue: 'pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2xidGVzdG1vY2sifQ.mocktoken',
+    'ACCESS_TOKEN',
+    defaultValue: String.fromEnvironment(
+      'MAPBOX_ACCESS_TOKEN',
+      defaultValue: 'pk.eyJ1IjoibW9ja3VzZXIiLCJhIjoiY2xidGVzdG1vY2sifQ.mocktoken',
+    ),
   );
 
-  /// Default fallback camera coordinates (San Francisco)
-  static const double defaultLatitude = 37.7749;
-  static const double defaultLongitude = -122.4194;
+  /// Default fallback camera coordinates (Damascus, Syria)
+  static const double defaultLatitude = 33.5138;
+  static const double defaultLongitude = 36.2765;
   static const double defaultZoom = 14.0;
 
   static final CameraOptions defaultCameraOptions = CameraOptions(

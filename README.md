@@ -1,17 +1,145 @@
-# dndn_platform_test
+# Offline-First GPS Location Tracking & Telemetry Platform
 
-A new Flutter project.
+A production-oriented, offline-first Flutter application demonstrating **MVVM architecture**, **continuous background GPS location tracking**, **local SQLite persistence**, **outbox network synchronization**, **interactive Mapbox satellite mapping**, **hazard incident reporting**, and an **administrator telemetry dashboard**.
+
+---
+
+## Key Capabilities & Features
+
+### 1. Continuous Background & Foreground GPS Tracking
+* **Automatic GPS Sampling:** Captures position updates using a 2-second interval and 1-meter displacement filter threshold.
+* **Persistent Breadcrumb Route:** Persists every coordinate snapshot locally to SQLite via Drift and calculates total geodesic path distance in real time.
+* **Continuous Execution:** Tracking activates automatically on launch and stays active without manual pause/start friction.
+
+### 2. Interactive Mapbox Canvas (`MapView` & `MapCanvas`)
+* **Live Route Polyline:** Renders the user's traveled route on a satellite-streets Mapbox style Uri.
+* **Custom Profile Avatar Puck:** Dynamically downsamples and clips the user's personal photo into a crisp 80x80 circular avatar location puck with a white outer ring and drop shadow.
+* **Vector Hazard Markers:** Uses `PointAnnotationManager` with cached high-DPI vector-style icons for reported hazards:
+  * **Police**: Blue circular badge with police shield icon (`Icons.local_police_rounded`).
+  * **Accident**: Red circular badge with vehicle collision icon (`Icons.car_crash_rounded`).
+  * **Traffic Heavy**: Orange circular badge with traffic signal icon (`Icons.traffic_rounded`).
+* **Camera Focus Navigation:** Smooth animated camera fly-to transitions when tapping "View on Map" from incident logs or recentering to live location.
+
+### 3. Offline-First Outbox Synchronization (`SyncEngine`)
+* **Local-First Source of Truth:** All reads prefer locally persisted SQLite data.
+* **Transactional Outbox Queue:** Mutations (`addLocationPoint`, `addIncidentReport`) are written atomically to local storage alongside a pending outbox record (`SyncOutboxItem`).
+* **Resilient Sync Engine:** Processes outbox items through state transitions (`pending` $\rightarrow$ `syncing` $\rightarrow$ `synced` / `failed`). Idempotent retries ensure zero data loss during network outages.
+
+### 4. Hazard Incident Reporting
+* **Location-Stamped Submission:** Users can report incidents (Police, Accident, Traffic Heavy) with immediate visual feedback via snackbars and local outbox persistence.
+
+### 5. Administrator Telemetry Dashboard (`AdminView`)
+* **Telemetry Metrics:** Displays total distance traveled (formatted in meters/kilometers), total location points captured, and an itemized incident report log.
+* **Role-Based Access Control:** Protected by `UserRoleCubit` and `AdminCubit`. Non-admin users see an `UnauthorizedView` with a quick "Switch to Administrator Mode" toggle that seamlessly reloads telemetry without double navigation bars.
+
+---
+
+## Architectural Principles & Design System
+
+The application strictly follows **MVVM** and **Clean Architecture**:
+
+```
+Presentation (Views & ViewModels/Cubits)
+       │
+       ▼
+Domain Layer (Models, Repository Contracts, Failures)
+       │
+       ▼
+Data Layer (Drift Database, Location Service, Sync Engine, Repositories)
+```
+
+* **SOLID Compliance:** High cohesion and single responsibility across all classes. ViewModels never depend on concrete UI/Mapbox SDK classes.
+* **Widget Constraints:** Widgets are kept under 100–150 lines by breaking complex views into composable components (`MapFabGroup`, `MapCanvas`, `IncidentsTable`, `AdminTelemetryOverview`, `AdminTelemetryExplanationCard`).
+* **Functional Error Handling:** Uses `fpdart` (`Either`, `TaskEither`) for explicit, type-safe failure domain modeling (`TrackingFailure`).
+
+---
+
+## Directory Structure
+
+```
+lib/
+├── core/
+│   ├── constants/        # AppConstants & AppStrings
+│   └── theme/            # AppSpacing & Design Tokens
+├── data/
+│   ├── database/         # Drift SQLite Database & Tables (LocationPoints, Incidents, SyncOutbox)
+│   ├── repositories/     # TrackingRepositoryImpl (Atomic writes & outbox queue)
+│   ├── services/         # LocationService (Geolocator foreground/background streams)
+│   └── sync/             # SyncEngine (Outbox flush processor)
+├── domain/
+│   ├── failures/         # Strongly-typed TrackingFailure domain hierarchy
+│   ├── models/           # Domain models (LocationPoint, IncidentReport, UserRole, SyncOutboxItem)
+│   ├── repositories/     # TrackingRepository interface contract
+│   └── services/         # DistanceCalculator (Haversine geodesic distance)
+└── presentation/
+    ├── cubits/           # MapCubit, AdminCubit, IncidentCubit, UserRoleCubit & States
+    ├── navigation/       # AppRouter (GoRouter declarative routes)
+    ├── views/            # MapView, AdminView, UnauthorizedView
+    └── widgets/          # MapCanvas, MapFabGroup, IncidentIconHelper, IncidentsTable, etc.
+```
+
+---
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+### Prerequisites
+* **Flutter SDK:** `^3.22.1` or higher
+* **Dart SDK:** `^3.12.1`
+* **iOS:** Deployment target `14.0` or higher
+* **Android:** `minSdk 21` or higher
 
-A few resources to get you started if this is your first Flutter project:
+### Installation & Setup
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+1. **Clone the repository:**
+   ```bash
+   git clone <repository_url>
+   cd dndn_platform_test
+   ```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. **Install dependencies:**
+   ```bash
+   flutter pub get
+   ```
+
+3. **Generate Drift database bindings (if modifying database models):**
+   ```bash
+   dart run build_runner build --delete-conflicting-outputs
+   ```
+
+4. **Run static analysis:**
+   ```bash
+   flutter analyze
+   ```
+
+5. **Run the test suite:**
+   ```bash
+   flutter test
+   ```
+
+6. **Run the application:**
+   ```bash
+   flutter run
+   ```
+
+---
+
+## Testing Architecture
+
+The codebase includes an extensive automated test suite (**87 passing tests**) covering all layers:
+
+* **Unit Tests:** Models, `DistanceCalculator`, `LocationService`, `SyncEngine`, `MapCubit`, `AdminCubit`, `IncidentCubit`, `UserRoleCubit`.
+* **Database Tests:** In-memory Drift SQLite CRUD, reactive table watchers, and outbox state transitions.
+* **Widget Tests:** `MapView`, `AdminView`, `UnauthorizedView`, `MapFabGroup`, `MyLocationButton`, `IncidentsTable`, `TelemetryCard`.
+* **E2E Integration Test:** End-to-end workflow verifying tracking, incident reporting, outbox sync, and role access control (`test/integration/tracking_e2e_test.dart`).
+
+---
+
+## Conventional Commits
+
+All changes follow **Conventional Commits**:
+
+* `feat(...)`: New features and domain capabilities.
+* `fix(...)`: Bug fixes and edge-case handling.
+* `refactor(...)`: Architectural improvements and SOLID refactoring.
+* `docs(...)`: Documentation and specifications.
+* `test(...)`: Unit, widget, and integration test coverage.

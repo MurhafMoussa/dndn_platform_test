@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fpdart/fpdart.dart';
 
+import '../../../data/services/home_widget_service.dart';
 import '../../../data/services/location_service.dart';
 import '../../../domain/failures/tracking_failure.dart';
 import '../../../domain/models/incident_report.dart';
@@ -10,10 +11,11 @@ import '../../../domain/models/location_point.dart';
 import '../../../domain/repositories/tracking_repository.dart';
 import 'map_state.dart';
 
-/// Cubit managing location tracking streams, incidents, camera focus, and map presentation states.
+/// Cubit managing location tracking streams, incidents, camera focus, home widget updates, and map presentation states.
 class MapCubit extends Cubit<MapState> {
   final TrackingRepository repository;
   final LocationService locationService;
+  final HomeWidgetService homeWidgetService;
 
   StreamSubscription<Either<TrackingFailure, List<LocationPoint>>>? _pointsSubscription;
   StreamSubscription<Either<TrackingFailure, List<IncidentReport>>>? _incidentsSubscription;
@@ -22,7 +24,9 @@ class MapCubit extends Cubit<MapState> {
   MapCubit({
     required this.repository,
     required this.locationService,
-  }) : super(const MapInitial());
+    HomeWidgetService? homeWidgetService,
+  })  : homeWidgetService = homeWidgetService ?? HomeWidgetService(),
+        super(const MapInitial());
 
   /// Initializes the map screen by setting up streams and starting location tracking.
   Future<void> initializeMap() async {
@@ -114,7 +118,13 @@ class MapCubit extends Cubit<MapState> {
 
   void _subscribeToLocationPoints() {
     _pointsSubscription = repository.watchLocationPoints().listen(
-      (either) => either.fold((failure) => emit(MapFailure(failure)), _onLocationPointsReceived),
+      (either) => either.fold(
+        (failure) => emit(MapFailure(failure)),
+        (points) async {
+          _onLocationPointsReceived(points);
+          await _refreshHomeWidget(points);
+        },
+      ),
       onError: (Object error) => emit(
         MapFailure(DatabaseFailure('Error observing location points: ${error.toString()}', error)),
       ),
@@ -176,6 +186,19 @@ class MapCubit extends Cubit<MapState> {
         isTracking: currentlyTracking,
       ),
     );
+  }
+
+  Future<void> _refreshHomeWidget(List<LocationPoint> points) async {
+    try {
+      final distanceResult = await repository.getTotalDistanceMeters().run();
+      final distance = distanceResult.getOrElse((_) => 0.0);
+      final isTracking = state is MapLoaded ? (state as MapLoaded).isTracking : true;
+      await homeWidgetService.updateWidgetData(
+        distanceMeters: distance,
+        points: points,
+        isTracking: isTracking,
+      );
+    } catch (_) {}
   }
 
   void _onLiveLocationPointReceived(LocationPoint point) {

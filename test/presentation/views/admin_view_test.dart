@@ -130,7 +130,7 @@ void main() {
 
   group('AdminView', () {
     testWidgets('renders UnauthorizedView when user role is UserRole.user', (WidgetTester tester) async {
-      final userRoleCubit = UserRoleCubit(); // defaults to UserRole.user
+      final userRoleCubit = UserRoleCubit();
       final adminCubit = AdminCubit(repository: repository);
 
       addTearDown(() {
@@ -149,6 +149,37 @@ void main() {
 
       expect(find.text('Access Restricted'), findsOneWidget);
       expect(find.text('Unauthorized Access'), findsOneWidget);
+    });
+
+    testWidgets('tapping Switch to Administrator Mode loads telemetry dashboard immediately', (WidgetTester tester) async {
+      final userRoleCubit = UserRoleCubit(); // defaults to UserRole.user
+      final adminCubit = AdminCubit(repository: repository);
+
+      addTearDown(() {
+        adminCubit.close();
+        userRoleCubit.close();
+      });
+
+      await tester.pumpWidget(
+        buildSubject(
+          userRoleCubit: userRoleCubit,
+          adminCubit: adminCubit,
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Access Restricted'), findsOneWidget);
+
+      await tester.tap(find.text('Switch to Administrator Mode'));
+      await tester.pump();
+
+      repository.pointsController.add(const Right([]));
+      repository.incidentsController.add(const Right([]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Admin Telemetry Dashboard'), findsOneWidget);
+      expect(find.text('Access Restricted'), findsNothing);
     });
 
     testWidgets('renders telemetry dashboard and incidents table when user role is UserRole.admin', (WidgetTester tester) async {

@@ -36,21 +36,24 @@ class _AdminViewState extends State<AdminView> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return BlocBuilder<UserRoleCubit, UserRole>(
+    return BlocConsumer<UserRoleCubit, UserRole>(
+      listener: (context, activeRole) {
+        context.read<AdminCubit>().loadTelemetry(activeRole);
+      },
       builder: (context, activeRole) {
         if (activeRole == UserRole.user) {
-          return const UnauthorizedView();
+          return const UnauthorizedView(showScaffold: true);
         }
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(AppStrings.adminTitle),
+            title: const Text(AppStrings.adminTitle),
           ),
           drawer: const AppNavigationDrawer(currentRoute: AppConstants.adminRoute),
           body: BlocBuilder<AdminCubit, AdminState>(
             builder: (context, state) {
               if (state is AdminUnauthorized) {
-                return const UnauthorizedView();
+                return const UnauthorizedView(showScaffold: false);
               }
               if (state is AdminLoading || state is AdminInitial) {
                 return const Center(child: CircularProgressIndicator());

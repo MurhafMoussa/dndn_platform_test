@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -5,12 +6,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../../core/constants/app_constants.dart';
 import '../../domain/models/incident_report.dart';
 import '../../domain/models/location_point.dart';
 
-/// Offscreen canvas painter that renders a styled map snapshot image with polyline route, hazard markers, and user avatar puck.
+/// Offscreen canvas painter that renders real satellite map snapshot imagery with polyline route, hazard markers, and user avatar puck.
 abstract final class HomeWidgetMapSnapshot {
-  /// Generates a 600x400 PNG image bytes representing the GPS breadcrumb route and incident markers.
+  /// Generates a 600x400 PNG image bytes representing the real satellite map background and GPS breadcrumb route.
   static Future<Uint8List> generateSnapshotBytes({
     required List<LocationPoint> points,
     List<IncidentReport> incidents = const [],
@@ -20,19 +22,69 @@ abstract final class HomeWidgetMapSnapshot {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, width, height));
 
-    // Dark satellite map style background
-    final bgPaint = Paint()..color = const Color(0xFF141D2B);
-    canvas.drawRect(Rect.fromLTWH(0, 0, width, height), bgPaint);
+    // Calculate map center and zoom level
+    double centerLat = AppConstants.defaultLatitude;
+    double centerLng = AppConstants.defaultLongitude;
+    double zoom = 14.0;
 
-    // Subtle map grid lines
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
-      ..strokeWidth = 1.0;
-    for (double x = 0; x < width; x += 60) {
-      canvas.drawLine(Offset(x, 0), Offset(x, height), gridPaint);
+    if (points.isNotEmpty) {
+      double minLat = points.first.latitude;
+      double maxLat = points.first.latitude;
+      double minLng = points.first.longitude;
+      double maxLng = points.first.longitude;
+
+      for (final p in points) {
+        minLat = min(minLat, p.latitude);
+        maxLat = max(maxLat, p.latitude);
+        minLng = min(minLng, p.longitude);
+        maxLng = max(maxLng, p.longitude);
+      }
+
+      centerLat = (minLat + maxLat) / 2;
+      centerLng = (minLng + maxLng) / 2;
+
+      final latSpan = maxLat - minLat;
+      final lngSpan = maxLng - minLng;
+      final maxSpan = max(latSpan, lngSpan);
+
+      if (maxSpan > 0.1) {
+        zoom = 11.0;
+      } else if (maxSpan > 0.03) {
+        zoom = 12.5;
+      } else if (maxSpan > 0.01) {
+        zoom = 13.5;
+      }
     }
-    for (double y = 0; y < height; y += 60) {
-      canvas.drawLine(Offset(0, y), Offset(width, y), gridPaint);
+
+    // Attempt to fetch real satellite map background image
+    ui.Image? satelliteMapImage = await _fetchSatelliteMapImage(centerLat, centerLng, zoom);
+
+    if (satelliteMapImage != null) {
+      canvas.drawImageRect(
+        satelliteMapImage,
+        Rect.fromLTWH(0, 0, satelliteMapImage.width.toDouble(), satelliteMapImage.height.toDouble()),
+        Rect.fromLTWH(0, 0, width, height),
+        Paint()..filterQuality = ui.FilterQuality.high,
+      );
+      // Subtle darkening overlay so polyline route and markers stand out sharply
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, width, height),
+        Paint()..color = Colors.black.withValues(alpha: 0.25),
+      );
+    } else {
+      // Fallback: Dark satellite map style background with grid lines
+      final bgPaint = Paint()..color = const Color(0xFF141D2B);
+      canvas.drawRect(Rect.fromLTWH(0, 0, width, height), bgPaint);
+
+      final gridPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.05)
+        ..strokeWidth = 1.0;
+      for (double x = 0; x < width; x += 60) {
+        canvas.drawLine(Offset(x, 0), Offset(x, height), gridPaint);
+      }
+      for (double y = 0; y < height; y += 60) {
+        canvas.drawLine(Offset(0, y), Offset(width, y), gridPaint);
+      }
     }
 
     ui.Image? avatarImage;
@@ -64,6 +116,30 @@ abstract final class HomeWidgetMapSnapshot {
     final image = await picture.toImage(width.toInt(), height.toInt());
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return byteData!.buffer.asUint8List();
+  }
+
+  static Future<ui.Image?> _fetchSatelliteMapImage(double lat, double lng, double zoom) async {
+    try {
+      final token = AppConstants.defaultMapboxToken;
+      final url = Uri.parse(
+        'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${lng.toStringAsFixed(4)},${lat.toStringAsFixed(4)},${zoom.toStringAsFixed(1)},0,0/600x400@2x?access_token=$token',
+      );
+
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 3);
+      final request = await client.getUrl(url);
+      final response = await request.close();
+
+      if (response.statusCode == 200) {
+        final bytes = await response.fold<List<int>>(<int>[], (acc, data) => acc..addAll(data));
+        if (bytes.isNotEmpty) {
+          final codec = await ui.instantiateImageCodec(Uint8List.fromList(bytes));
+          final frame = await codec.getNextFrame();
+          return frame.image;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   static void _paintRouteAndMarkers({
@@ -112,14 +188,14 @@ abstract final class HomeWidgetMapSnapshot {
       }
 
       final glowPaint = Paint()
-        ..color = const Color(0xFF2196F3).withValues(alpha: 0.4)
+        ..color = const Color(0xFF00E5FF).withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 10.0
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
       canvas.drawPath(path, glowPaint);
 
       final linePaint = Paint()
-        ..color = const Color(0xFF64B5F6)
+        ..color = const Color(0xFF00E5FF)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4.0
         ..strokeCap = StrokeCap.round
@@ -127,7 +203,7 @@ abstract final class HomeWidgetMapSnapshot {
       canvas.drawPath(path, linePaint);
 
       // Green Start dot
-      canvas.drawCircle(firstOffset, 7.0, Paint()..color = const Color(0xFF4CAF50));
+      canvas.drawCircle(firstOffset, 7.0, Paint()..color = const Color(0xFF00E676));
       canvas.drawCircle(firstOffset, 4.0, Paint()..color = Colors.white);
     }
 
@@ -135,9 +211,9 @@ abstract final class HomeWidgetMapSnapshot {
     for (final incident in incidents) {
       final offset = toOffset(incident.latitude, incident.longitude);
       final color = switch (incident.type) {
-        IncidentType.police => const Color(0xFF1E88E5),
-        IncidentType.accident => const Color(0xFFE53935),
-        IncidentType.trafficHeavy => const Color(0xFFFB8C00),
+        IncidentType.police => const Color(0xFF2979FF),
+        IncidentType.accident => const Color(0xFFFF1744),
+        IncidentType.trafficHeavy => const Color(0xFFFF9100),
       };
 
       canvas.drawCircle(offset, 9.0, Paint()..color = color);

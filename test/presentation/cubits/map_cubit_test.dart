@@ -71,6 +71,11 @@ class FakeLocationService extends LocationService {
   TrackingFailure? mockLocationFailure;
 
   @override
+  Future<Either<TrackingFailure, LocationPoint>> getLastKnownLocation() async {
+    return getCurrentLocation();
+  }
+
+  @override
   Future<Either<TrackingFailure, LocationPoint>> getCurrentLocation({
     dynamic locationSettings,
   }) async {

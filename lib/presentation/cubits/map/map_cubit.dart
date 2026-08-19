@@ -90,7 +90,18 @@ class MapCubit extends Cubit<MapState> {
 
   /// Resets camera target back to user live location.
   Future<void> recenterToUserLocation() async {
-    final locationResult = await locationService.getCurrentLocation();
+    if (state is MapLoaded) {
+      final currentState = state as MapLoaded;
+      if (currentState.currentLocation != null) {
+        focusLocation(
+          currentState.currentLocation!.latitude,
+          currentState.currentLocation!.longitude,
+          zoom: currentState.savedZoom,
+        );
+      }
+    }
+
+    final locationResult = await locationService.getLastKnownLocation();
     locationResult.fold(
       (failure) {
         if (state is MapLoaded) {
@@ -170,7 +181,7 @@ class MapCubit extends Cubit<MapState> {
   }
 
   Future<void> _acquireInitialLocation() async {
-    final locationResult = await locationService.getCurrentLocation();
+    final locationResult = await locationService.getLastKnownLocation();
     locationResult.fold(
       (_) {},
       (point) {

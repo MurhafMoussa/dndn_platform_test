@@ -19,7 +19,7 @@ class LocationService {
       return AndroidSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 1,
-        forceLocationManager: true,
+        forceLocationManager: false,
         intervalDuration: const Duration(seconds: 2),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Background Location Tracking',
@@ -101,6 +101,30 @@ class LocationService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Gets fast cached or fresh current location fix.
+  Future<Either<TrackingFailure, LocationPoint>> getLastKnownLocation() async {
+    final permissionCheck = await checkAndRequestPermission();
+    return permissionCheck.fold(
+      Left.new,
+      (_) async {
+        try {
+          final position = await _geolocator.getLastKnownPosition();
+          if (position != null) {
+            return Right(
+              LocationPoint(
+                id: _uuid.v4(),
+                latitude: position.latitude,
+                longitude: position.longitude,
+                timestamp: position.timestamp,
+              ),
+            );
+          }
+        } catch (_) {}
+        return getCurrentLocation();
+      },
+    );
   }
 
   /// Gets single current location fix.

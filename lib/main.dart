@@ -6,16 +6,15 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'core/constants/app_constants.dart';
+import 'core/di/service_locator.dart';
 import 'core/theme/app_theme.dart';
-import 'data/database/tracking_database.dart';
-import 'data/repositories/tracking_repository_impl.dart';
-import 'data/services/location_service.dart';
-import 'data/sync/sync_engine.dart';
 import 'presentation/cubits/admin/admin_cubit.dart';
 import 'presentation/cubits/incident/incident_cubit.dart';
+import 'presentation/cubits/location_permission/location_permission_cubit.dart';
 import 'presentation/cubits/map/map_cubit.dart';
 import 'presentation/cubits/user_role_cubit.dart';
 import 'presentation/navigation/app_router.dart';
+import 'presentation/widgets/location_permission_guard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,54 +27,32 @@ void main() async {
         : HydratedStorageDirectory((await getApplicationDocumentsDirectory()).path),
   );
 
-  final database = TrackingDatabase();
-  final syncEngine = SyncEngine(database: database);
-  final repository = TrackingRepositoryImpl(
-    database: database,
-    syncEngine: syncEngine,
-  );
-  final locationService = LocationService();
+  await setupServiceLocator();
 
-  runApp(
-    MyApp(
-      repository: repository,
-      locationService: locationService,
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final TrackingRepositoryImpl repository;
-  final LocationService locationService;
-
-  const MyApp({
-    super.key,
-    required this.repository,
-    required this.locationService,
-  });
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider<UserRoleCubit>(
-          create: (_) => UserRoleCubit(),
+          create: (_) => getIt<UserRoleCubit>(),
+        ),
+        BlocProvider<LocationPermissionCubit>(
+          create: (_) => getIt<LocationPermissionCubit>()..checkPermission(),
         ),
         BlocProvider<MapCubit>(
-          create: (_) => MapCubit(
-            repository: repository,
-            locationService: locationService,
-          )..initializeMap(),
+          create: (_) => getIt<MapCubit>(),
         ),
         BlocProvider<IncidentCubit>(
-          create: (_) => IncidentCubit(
-            repository: repository,
-          ),
+          create: (_) => getIt<IncidentCubit>(),
         ),
         BlocProvider<AdminCubit>(
-          create: (_) => AdminCubit(
-            repository: repository,
-          ),
+          create: (_) => getIt<AdminCubit>(),
         ),
       ],
       child: MaterialApp.router(
@@ -84,6 +61,11 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         routerConfig: AppRouter.router,
+        builder: (context, child) {
+          return LocationPermissionGuard(
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
       ),
     );
   }

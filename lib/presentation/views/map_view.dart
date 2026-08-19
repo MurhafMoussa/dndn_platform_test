@@ -35,6 +35,7 @@ class _MapViewState extends State<MapView> {
     super.initState();
     MapboxOptions.setAccessToken(AppConstants.defaultMapboxToken);
     final mapCubit = context.read<MapCubit>();
+
     if (mapCubit.state is MapInitial) {
       mapCubit.initializeMap().then((_) {
         if (mounted && widget.targetLat != null && widget.targetLng != null) {
@@ -49,14 +50,21 @@ class _MapViewState extends State<MapView> {
   @override
   void didUpdateWidget(MapView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if ((widget.targetLat != oldWidget.targetLat || widget.targetLng != oldWidget.targetLng) &&
+    if ((widget.targetLat != oldWidget.targetLat ||
+            widget.targetLng != oldWidget.targetLng) &&
         widget.targetLat != null &&
         widget.targetLng != null) {
-      context.read<MapCubit>().focusLocation(widget.targetLat!, widget.targetLng!);
+      context.read<MapCubit>().focusLocation(
+        widget.targetLat!,
+        widget.targetLng!,
+      );
     }
   }
 
-  void _showReportIncidentDialog(BuildContext context, LocationPoint? currentLocation) {
+  void _showReportIncidentDialog(
+    BuildContext context,
+    LocationPoint? currentLocation,
+  ) {
     final lat = currentLocation?.latitude ?? AppConstants.defaultLatitude;
     final lng = currentLocation?.longitude ?? AppConstants.defaultLongitude;
 
@@ -65,10 +73,10 @@ class _MapViewState extends State<MapView> {
       builder: (_) => IncidentReportDialog(
         onSelectIncident: (type) {
           context.read<IncidentCubit>().submitIncident(
-                type: type,
-                latitude: lat,
-                longitude: lng,
-              );
+            type: type,
+            latitude: lat,
+            longitude: lng,
+          );
         },
       ),
     );
@@ -83,7 +91,9 @@ class _MapViewState extends State<MapView> {
         if (incidentState is IncidentSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Incident reported: ${incidentState.report.type.name}'),
+              content: Text(
+                'Incident reported: ${incidentState.report.type.name}',
+              ),
               backgroundColor: colorScheme.primary,
               duration: const Duration(seconds: 3),
             ),
@@ -91,7 +101,9 @@ class _MapViewState extends State<MapView> {
         } else if (incidentState is IncidentFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to report incident: ${incidentState.failure.message}'),
+              content: Text(
+                'Failed to report incident: ${incidentState.failure.message}',
+              ),
               backgroundColor: colorScheme.error,
             ),
           );
@@ -128,7 +140,8 @@ class _MapViewState extends State<MapView> {
           builder: (context, state) {
             final loc = state is MapLoaded ? state.currentLocation : null;
             return MapFabGroup(
-              onRecenter: () => context.read<MapCubit>().recenterToUserLocation(),
+              onRecenter: () =>
+                  context.read<MapCubit>().recenterToUserLocation(),
               onReportHazard: () => _showReportIncidentDialog(context, loc),
             );
           },
@@ -146,7 +159,9 @@ class _MapErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isServiceDisabled = failure is LocationServiceDisabledFailure || failure.message.contains('disabled');
+    final isServiceDisabled =
+        failure is LocationServiceDisabledFailure ||
+        failure.message.contains('disabled');
 
     return Center(
       child: Padding(
@@ -154,7 +169,11 @@ class _MapErrorView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.location_off_rounded, size: 48, color: colorScheme.error),
+            Icon(
+              Icons.location_off_rounded,
+              size: 48,
+              color: colorScheme.error,
+            ),
             const SizedBox(height: AppSpacing.lg),
             const Text(AppStrings.locationFailureTitle),
             const SizedBox(height: AppSpacing.sm),
@@ -162,7 +181,8 @@ class _MapErrorView extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             if (isServiceDisabled) ...[
               ElevatedButton.icon(
-                onPressed: () => context.read<MapCubit>().openLocationSettings(),
+                onPressed: () =>
+                    context.read<MapCubit>().openLocationSettings(),
                 icon: const Icon(Icons.settings_rounded),
                 label: const Text('Open Location Settings'),
               ),

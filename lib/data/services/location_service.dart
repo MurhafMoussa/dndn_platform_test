@@ -94,6 +94,44 @@ class LocationService {
     }
   }
 
+  /// Checks current permission status without triggering a system prompt.
+  Future<Either<TrackingFailure, Unit>> checkPermissionStatus() async {
+    try {
+      final permission = await _geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        return const Left(
+          LocationPermissionDeniedFailure(
+            message: 'Location permission is denied.',
+            isPermanentlyDenied: false,
+          ),
+        );
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return const Left(
+          LocationPermissionDeniedFailure(
+            message: 'Location permission is permanently denied in settings.',
+            isPermanentlyDenied: true,
+          ),
+        );
+      }
+
+      final serviceEnabled = await _geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return const Left(LocationServiceDisabledFailure());
+      }
+
+      return const Right(unit);
+    } catch (e) {
+      return Left(
+        LocationPermissionDeniedFailure(
+          message: 'Failed to check location permission status: ${e.toString()}',
+          cause: e,
+        ),
+      );
+    }
+  }
+
   /// Opens native device location settings so the user can enable GPS services.
   Future<bool> openLocationSettings() async {
     try {

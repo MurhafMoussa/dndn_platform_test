@@ -222,9 +222,24 @@ class MapCubit extends Cubit<MapState> {
   void _onLiveLocationPointReceived(LocationPoint point) {
     if (state is MapLoaded) {
       final currentState = state as MapLoaded;
-      emit(currentState.copyWith(currentLocation: point));
+      final target = currentState.cameraFocusTarget ??
+          CameraFocusTarget(
+            latitude: point.latitude,
+            longitude: point.longitude,
+            zoom: currentState.savedZoom,
+          );
+      emit(currentState.copyWith(currentLocation: point, cameraFocusTarget: target));
     } else {
-      emit(MapLoaded(locationPoints: const [], currentLocation: point));
+      emit(
+        MapLoaded(
+          locationPoints: const [],
+          currentLocation: point,
+          cameraFocusTarget: CameraFocusTarget(
+            latitude: point.latitude,
+            longitude: point.longitude,
+          ),
+        ),
+      );
     }
   }
 

@@ -43,6 +43,7 @@ class MapCanvas extends StatefulWidget {
 }
 
 class _MapCanvasState extends State<MapCanvas> {
+  MapboxMap? _mapInstance;
   PolylineAnnotationManager? _polylineManager;
   PointAnnotationManager? _incidentPointManager;
   late final CameraViewportState _initialViewport;
@@ -65,7 +66,8 @@ class _MapCanvasState extends State<MapCanvas> {
   @override
   void didUpdateWidget(MapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.mapboxMap == null) return;
+    final map = _mapInstance ?? widget.mapboxMap;
+    if (map == null) return;
 
     if (_shouldUpdatePolyline(oldWidget)) {
       _renderRoutePolyline();
@@ -74,7 +76,9 @@ class _MapCanvasState extends State<MapCanvas> {
       _renderIncidentMarkers();
     }
     if (widget.cameraFocusTarget != null && widget.cameraFocusTarget != oldWidget.cameraFocusTarget) {
-      _flyToCameraFocusTarget(widget.cameraFocusTarget!);
+      _flyToCameraFocusTarget(widget.cameraFocusTarget!, map: map);
+    } else if (widget.cameraFocusTarget != null && oldWidget.mapboxMap == null && widget.mapboxMap != null) {
+      _flyToCameraFocusTarget(widget.cameraFocusTarget!, map: map);
     }
   }
 
@@ -90,10 +94,11 @@ class _MapCanvasState extends State<MapCanvas> {
             oldWidget.incidents != widget.incidents);
   }
 
-  Future<void> _flyToCameraFocusTarget(CameraFocusTarget target) async {
-    if (widget.mapboxMap == null) return;
+  Future<void> _flyToCameraFocusTarget(CameraFocusTarget target, {MapboxMap? map}) async {
+    final mapbox = map ?? _mapInstance ?? widget.mapboxMap;
+    if (mapbox == null) return;
     try {
-      await widget.mapboxMap!.flyTo(
+      await mapbox.flyTo(
         CameraOptions(
           center: Point(coordinates: Position(target.longitude, target.latitude)),
           zoom: target.zoom,
@@ -104,6 +109,7 @@ class _MapCanvasState extends State<MapCanvas> {
   }
 
   Future<void> _handleMapCreated(MapboxMap mapboxMap) async {
+    _mapInstance = mapboxMap;
     widget.onMapCreated(mapboxMap);
     try {
       Uint8List? customPuckBytes;
@@ -127,8 +133,19 @@ class _MapCanvasState extends State<MapCanvas> {
       _incidentPointManager = await mapboxMap.annotations.createPointAnnotationManager();
       await _renderRoutePolyline();
       await _renderIncidentMarkers();
-      if (widget.cameraFocusTarget != null) {
-        await _flyToCameraFocusTarget(widget.cameraFocusTarget!);
+
+      final target = widget.cameraFocusTarget;
+      if (target != null) {
+        await _flyToCameraFocusTarget(target, map: mapboxMap);
+      } else if (widget.currentLat != null && widget.currentLng != null) {
+        await _flyToCameraFocusTarget(
+          CameraFocusTarget(
+            latitude: widget.currentLat!,
+            longitude: widget.currentLng!,
+            zoom: widget.savedZoom,
+          ),
+          map: mapboxMap,
+        );
       }
     } catch (_) {}
   }
@@ -220,7 +237,7 @@ class _MapCanvasState extends State<MapCanvas> {
       key: const ValueKey('mapbox_map_widget'),
       styleUri: MapboxStyles.SATELLITE_STREETS,
       viewport: _initialViewport,
-      textureView: true,
+      textureView: false,
       onMapCreated: _handleMapCreated,
       onCameraChangeListener: (data) {
         context.read<MapCubit>().saveZoomLevel(data.cameraState.zoom);

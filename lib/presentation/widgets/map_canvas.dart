@@ -79,6 +79,14 @@ class _MapCanvasState extends State<MapCanvas> {
       _flyToCameraFocusTarget(widget.cameraFocusTarget!, map: map);
     } else if (widget.cameraFocusTarget != null && oldWidget.mapboxMap == null && widget.mapboxMap != null) {
       _flyToCameraFocusTarget(widget.cameraFocusTarget!, map: map);
+    } else if (widget.cameraFocusTarget == null &&
+        widget.currentLat != null &&
+        widget.currentLng != null &&
+        (oldWidget.currentLat == null || oldWidget.currentLng == null)) {
+      _flyToCameraFocusTarget(
+        CameraFocusTarget(latitude: widget.currentLat!, longitude: widget.currentLng!, zoom: widget.savedZoom),
+        map: map,
+      );
     }
   }
 

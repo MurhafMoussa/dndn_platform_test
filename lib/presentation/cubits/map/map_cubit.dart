@@ -21,6 +21,8 @@ class MapCubit extends Cubit<MapState> {
   StreamSubscription<Either<TrackingFailure, List<IncidentReport>>>? _incidentsSubscription;
   StreamSubscription<Either<TrackingFailure, LocationPoint>>? _locationStreamSubscription;
 
+  List<IncidentReport> _cachedIncidents = [];
+
   MapCubit({
     required this.repository,
     required this.locationService,
@@ -193,6 +195,7 @@ class MapCubit extends Cubit<MapState> {
   }
 
   void _onIncidentListReceived(List<IncidentReport> incidents) {
+    _cachedIncidents = incidents;
     if (state is MapLoaded) {
       final currentState = state as MapLoaded;
       emit(currentState.copyWith(incidents: incidents));
@@ -201,7 +204,7 @@ class MapCubit extends Cubit<MapState> {
 
   void _onLocationPointsReceived(List<LocationPoint> points) {
     final currentLoc = points.isNotEmpty ? points.last : (state is MapLoaded ? (state as MapLoaded).currentLocation : null);
-    final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
+    final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : _cachedIncidents;
     final existingCameraFocus = state is MapLoaded ? (state as MapLoaded).cameraFocusTarget : null;
     final currentlyTracking = state is MapLoaded ? (state as MapLoaded).isTracking : true;
     final savedZoom = state is MapLoaded ? (state as MapLoaded).savedZoom : 14.0;
@@ -222,7 +225,7 @@ class MapCubit extends Cubit<MapState> {
     try {
       final distanceResult = await repository.getTotalDistanceMeters().run();
       final distance = distanceResult.getOrElse((_) => 0.0);
-      final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : <IncidentReport>[];
+      final existingIncidents = state is MapLoaded ? (state as MapLoaded).incidents : _cachedIncidents;
       final isTracking = state is MapLoaded ? (state as MapLoaded).isTracking : true;
       await homeWidgetService.updateWidgetData(
         distanceMeters: distance,
@@ -247,6 +250,7 @@ class MapCubit extends Cubit<MapState> {
       emit(
         MapLoaded(
           locationPoints: const [],
+          incidents: _cachedIncidents,
           currentLocation: point,
           cameraFocusTarget: CameraFocusTarget(
             latitude: point.latitude,

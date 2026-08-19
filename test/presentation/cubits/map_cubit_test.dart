@@ -14,6 +14,8 @@ import 'package:fpdart/fpdart.dart';
 class FakeTrackingRepository implements TrackingRepository {
   final StreamController<Either<TrackingFailure, List<LocationPoint>>> pointsController =
       StreamController<Either<TrackingFailure, List<LocationPoint>>>.broadcast();
+  final StreamController<Either<TrackingFailure, List<IncidentReport>>> incidentsController =
+      StreamController<Either<TrackingFailure, List<IncidentReport>>>.broadcast();
 
   final List<LocationPoint> addedPoints = [];
 
@@ -33,7 +35,7 @@ class FakeTrackingRepository implements TrackingRepository {
 
   @override
   Stream<Either<TrackingFailure, List<IncidentReport>>> watchIncidents() {
-    return const Stream.empty();
+    return incidentsController.stream;
   }
 
   @override
@@ -60,6 +62,7 @@ class FakeTrackingRepository implements TrackingRepository {
 
   void dispose() {
     pointsController.close();
+    incidentsController.close();
   }
 }
 
@@ -193,6 +196,41 @@ void main() {
         );
 
         await mapCubit.initializeMap();
+        fakeRepository.pointsController.add(Right([p1]));
+
+        await expectFuture;
+      },
+    );
+
+    test(
+      'initializeMap preserves existing incidents emitted before location points',
+      () async {
+        final incident = IncidentReport(
+          id: 'inc1',
+          type: IncidentType.police,
+          latitude: 33.5138,
+          longitude: 36.2765,
+          timestamp: now,
+        );
+        final p1 = LocationPoint(
+          id: 'p1',
+          latitude: 37.7749,
+          longitude: -122.4194,
+          timestamp: now,
+        );
+
+        final expectFuture = expectLater(
+          mapCubit.stream,
+          emitsInOrder([
+            isA<MapLoading>(),
+            isA<MapLoaded>()
+                .having((s) => s.incidents, 'incidents', equals([incident]))
+                .having((s) => s.locationPoints, 'locationPoints', equals([p1])),
+          ]),
+        );
+
+        await mapCubit.initializeMap();
+        fakeRepository.incidentsController.add(Right([incident]));
         fakeRepository.pointsController.add(Right([p1]));
 
         await expectFuture;

@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../failures/tracking_failure.dart';
 import '../models/location_point.dart';
+import 'location_point_filter.dart';
 
 /// Helper utility for computing distance metrics across location points.
 class DistanceCalculator {
@@ -10,23 +11,30 @@ class DistanceCalculator {
 
   /// Calculates total distance traveled in meters across chronological [points].
   ///
+  /// Optional [filter] drops GPS noise jitter and impossible spikes.
   /// Returns [Right(0.0)] if [points] has fewer than 2 elements.
   /// Returns [Left(DistanceCalculationFailure)] if coordinates are invalid or distance calculation fails.
   static Either<TrackingFailure, double> calculateTotalDistance(
-    List<LocationPoint> points,
-  ) {
+    List<LocationPoint> points, {
+    LocationPointFilter? filter,
+  }) {
     if (points.length < 2) {
       return const Right(0.0);
     }
 
     try {
-      double totalDistance = 0.0;
-      for (int i = 0; i < points.length - 1; i++) {
-        final p1 = points[i];
-        final p2 = points[i + 1];
+      final targetPoints = filter != null ? filter.filter(points) : points;
+      if (targetPoints.length < 2) {
+        return const Right(0.0);
+      }
 
-        if (!_isValidCoordinate(p1.latitude, p1.longitude) ||
-            !_isValidCoordinate(p2.latitude, p2.longitude)) {
+      double totalDistance = 0.0;
+      for (int i = 0; i < targetPoints.length - 1; i++) {
+        final p1 = targetPoints[i];
+        final p2 = targetPoints[i + 1];
+
+        if (!LocationPointFilter.isPlausible(p1.latitude, p1.longitude) ||
+            !LocationPointFilter.isPlausible(p2.latitude, p2.longitude)) {
           return const Left(
             DistanceCalculationFailure(
               'Invalid latitude or longitude coordinates encountered in location points.',
@@ -51,15 +59,5 @@ class DistanceCalculator {
         ),
       );
     }
-  }
-
-  static bool _isValidCoordinate(double latitude, double longitude) {
-    if (latitude.isNaN || latitude.isInfinite || latitude < -90.0 || latitude > 90.0) {
-      return false;
-    }
-    if (longitude.isNaN || longitude.isInfinite || longitude < -180.0 || longitude > 180.0) {
-      return false;
-    }
-    return true;
   }
 }

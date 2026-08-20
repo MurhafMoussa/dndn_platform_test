@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/failures/tracking_failure.dart';
 import '../../domain/models/location_point.dart';
+import '../../domain/utils/location_point_filter.dart';
 
 /// Service managing foreground and background GPS location streams and permission checks.
 class LocationService {
@@ -213,6 +214,12 @@ class LocationService {
       await for (final position in _geolocator.getPositionStream(
         locationSettings: settings,
       )) {
+        if (!LocationPointFilter.isPlausible(position.latitude, position.longitude)) {
+          continue;
+        }
+        if (position.accuracy > 0 && position.accuracy >= 2000) {
+          continue;
+        }
         yield Right(
           LocationPoint(
             id: _uuid.v4(),

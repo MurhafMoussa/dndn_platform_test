@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/location_permission/location_permission_cubit.dart';
 import '../cubits/location_permission/location_permission_state.dart';
+import '../cubits/map/map_cubit.dart';
+import '../cubits/map/map_state.dart';
 import 'location_permission_error_view.dart';
 
 /// Application-level wrapper widget ensuring location permissions are granted before rendering children.
@@ -16,7 +18,15 @@ class LocationPermissionGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LocationPermissionCubit, LocationPermissionState>(
+    return BlocConsumer<LocationPermissionCubit, LocationPermissionState>(
+      listenWhen: (previous, current) =>
+          previous is LocationPermissionDenied && current is LocationPermissionGranted,
+      listener: (context, state) {
+        final mapCubit = context.read<MapCubit>();
+        if (mapCubit.state is MapFailure || mapCubit.state is MapInitial) {
+          mapCubit.initializeMap();
+        }
+      },
       builder: (context, state) {
         return switch (state) {
           LocationPermissionGranted() => child,

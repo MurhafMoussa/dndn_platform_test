@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
-        android:label="dndn_platform_test"
+        android:label="Dndn Telemetry"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

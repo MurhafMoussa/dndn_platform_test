@@ -2,7 +2,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 /// Central application constants and default configuration values.
 abstract final class AppConstants {
-  static const String appTitle = 'Dndn Telemetry Tracking';
+  static const String appTitle = 'Dndn Telemetry';
   static const String mapTitle = 'Map & Live Tracking';
   static const String adminTitle = 'Admin Telemetry Dashboard';
 
